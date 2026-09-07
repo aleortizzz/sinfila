@@ -590,20 +590,77 @@ crea el combo y todos sus ítems juntos, en un solo paso. También:
   ya existente no coincide con la suma de sus productos (por si se le
   agregan/sacan ítems después de creado).
 
-## Próxima sesión: deploy (git + GitHub + Hostinger)
+## Deploy — CERRADO ✅ (2026-09-08)
 
-Todavía **no se corrió `git init`** en este proyecto — cero historial de
-git hasta ahora. Lo próximo que pidió el usuario:
-1. `git init` + primer commit.
-2. Conectar el repo a GitHub.
-3. Deploy a Hostinger en un subdominio (`sinfila.tizdigital.com` o el que
-   se defina) — repasar en `PROGRESO.md` los recordatorios de `asiste`
-   sobre el zip de `dist/` (más abajo en este archivo) antes de armarlo.
-4. El usuario mencionó "el webhook para conectar con el repo de GitHub" —
-   confirmar si se refiere a GitHub Actions para build automático, o a la
-   función "Git" de hPanel (que `asiste` dejó pendiente como mejora
-   futura, con un script post-pull para el build). Preguntar antes de
-   asumir cuál.
+`git init` + repo en `github.com/aleortizzz/sinfila` (rama `main`).
+Subdominio **`sinfila.tizdigital.com`** creado en Hostinger — DNS en
+**Cloudflare** (no en los nameservers de Hostinger, igual que `asiste`):
+registro `A`, host `sinfila`, IP `147.93.39.226`, modo **DNS only** (nube
+gris, no proxied — para no interferir con la emisión del SSL de
+Hostinger). SSL de Hostinger ya emitido automático (http → https 301,
+https 200).
+
+**Deploy automático con GitHub Actions** (`.github/workflows/deploy.yml`):
+en cada push a `main`, corre `npm ci` + `npm run build` (con
+`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` como secrets, porque el build
+los necesita horneados en el JS) y sube `dist/` por **FTPS** a Hostinger
+con `SamKirkland/FTP-Deploy-Action`.
+
+Cuenta FTP dedicada y acotada (no la general de la cuenta de hosting):
+usuario `u452496377.sinfila`, directorio
+`/home/u452496377/domains/tizdigital.com/public_html/sinfila` (la cuenta
+queda "encerrada" ahí, por eso `server-dir: ./` en el workflow y no
+`/public_html/sinfila/` de nuevo). Password guardado como secret de
+GitHub (`HOSTINGER_FTP_PASSWORD`), nunca en el repo.
+
+Probado end-to-end: push → Action corre → sube por FTPS → sitio online
+con SSL → ruta profunda (`/bar-de-prueba`) sirve bien gracias al
+`.htaccess` de fallback SPA que ya traíamos del Hito 1.
+
+✅ Confirmado por el usuario: el segundo deploy (fix del `<title>`) se
+reflejó bien. Pipeline de deploy 100% probado de punta a punta, dos veces.
+
+## Estado actual — Hito 9a: motor de promos CERRADO ✅ (2026-09-08)
+
+Migración `20260908120000_motor_promos.sql`: tipo `item_calculado`,
+función `calcular_descuentos_promo()` (consulta SQL pura, no loop
+imperativo) y `crear_pedido()` reescrita para resolver todos los ítems
+primero, pedirles el descuento, y recién ahí insertar. Nunca se confía en
+el cliente para el descuento — se recalcula todo server-side, igual que
+precios y disponibilidad.
+
+Reglas implementadas: sin apilar (una sola promo por producto, la de
+mejor descuento para ESE producto puntual); un NxM agrupa TODAS las
+líneas del pedido asignadas a esa promo **aunque sean productos
+distintos** (ej. "3x2 en tragos de $8000" cuenta junto ISLA ROJA + KIWI
+FHRESH); precio_especial es un descuento plano por unidad.
+
+Bug de tooling encontrado y corregido en el camino: `unnest()` de un
+array de tipo compuesto en Postgres **ya lo desarma en columnas por sí
+solo** — tratar de capturarlo como una sola columna con alias
+`t(fila_completa, ordinalidad)` desalinea todo (el primer campo real
+termina pisando el nombre de la ordinalidad). Hay que aliasear los N
+campos del tipo + 1 para la ordinalidad.
+
+Probado con datos reales (no con Fernet/Papas — esos ya no existían, el
+usuario los reemplazó por tragos reales probando el admin: ISLA ROJA,
+KIWI FHRESH, POMELO HULK, PRIMAVERA DULCE, los 4 a $8000):
+- 3x2 con 2× ISLA ROJA + 1× KIWI FHRESH (2 productos distintos, misma
+  promo) → descuento agrupado correctamente ($8000 sobre $24000, con ~1
+  centavo de diferencia por redondeo — aceptable).
+- 2 unidades (no alcanza el mínimo de 3) → sin descuento, cobra completo.
+
+Nota de precisión conocida: el reparto del descuento entre líneas puede
+quedar hasta ~1 centavo desviado del valor exacto cuando la cantidad no
+divide justo (redondeo por línea antes de sumar). No bloqueante para el
+negocio real, documentado por si se quiere pulir después.
+
+Endurecido de paso el check constraint de `promos` (2a): ahora exige
+`n > 0`, `m >= 0` y `precio_especial > 0`.
+
+**Falta (Hito 9b)**: pantalla del admin para crear/editar promos — hoy
+solo se pueden cargar por SQL. También falta mostrar el descuento en el
+carrito ANTES de pagar (hoy se ve recién en la confirmación/seguimiento).
 
 **Pendiente, más grande**: elegir una variante específica al armar un
 combo (ej. "este combo lleva las papas con cheddar"). Hoy `combo_items`
