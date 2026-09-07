@@ -1,0 +1,158 @@
+import { supabase } from './supabase'
+
+// Conserva error.code (ej. '23503' foreign key) — así el que llama puede
+// distinguir "está referenciado en otro lado" de cualquier otro error, en
+// vez de adivinar por el texto del mensaje.
+function lanzar(error) {
+  const e = new Error(error.message)
+  e.code = error.code
+  throw e
+}
+
+// Data access para el panel admin. A diferencia de lib/locales.js (que
+// filtra disponible=true para la carta pública), acá se ve TODO — el
+// dueño necesita administrar lo que está oculto también.
+
+export async function obtenerCategoriasAdmin(localId) {
+  const { data, error } = await supabase
+    .from('categorias')
+    .select('*')
+    .eq('local_id', localId)
+    .order('orden')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function crearCategoria(localId, nombre, orden = 0) {
+  const { data, error } = await supabase
+    .from('categorias')
+    .insert({ local_id: localId, nombre, orden })
+    .select()
+    .single()
+  if (error) lanzar(error)
+  return data
+}
+
+export async function actualizarCategoria(id, cambios) {
+  const { error } = await supabase.from('categorias').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarCategoria(id) {
+  const { error } = await supabase.from('categorias').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function obtenerProductosAdmin(localId) {
+  const { data, error } = await supabase
+    .from('productos')
+    .select(
+      `*, grupos_opciones ( id, nombre, obligatorio, orden,
+         opciones ( id, nombre, precio_ajuste, orden ) )`,
+    )
+    .eq('local_id', localId)
+    .order('orden')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function crearProducto(payload) {
+  const { data, error } = await supabase.from('productos').insert(payload).select().single()
+  if (error) lanzar(error)
+  return data
+}
+
+export async function actualizarProducto(id, cambios) {
+  const { error } = await supabase.from('productos').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarProducto(id) {
+  const { error } = await supabase.from('productos').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
+// --- Grupos de opciones / opciones (armado de un producto) ---
+
+export async function crearGrupoOpciones(productoId, nombre, obligatorio, orden) {
+  const { data, error } = await supabase
+    .from('grupos_opciones')
+    .insert({ producto_id: productoId, nombre, obligatorio, orden })
+    .select()
+    .single()
+  if (error) lanzar(error)
+  return { ...data, opciones: [] }
+}
+
+export async function actualizarGrupoOpciones(id, cambios) {
+  const { error } = await supabase.from('grupos_opciones').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarGrupoOpciones(id) {
+  const { error } = await supabase.from('grupos_opciones').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function crearOpcion(grupoId, nombre, precioAjuste, orden) {
+  const { data, error } = await supabase
+    .from('opciones')
+    .insert({ grupo_opcion_id: grupoId, nombre, precio_ajuste: precioAjuste, orden })
+    .select()
+    .single()
+  if (error) lanzar(error)
+  return data
+}
+
+export async function actualizarOpcion(id, cambios) {
+  const { error } = await supabase.from('opciones').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarOpcion(id) {
+  const { error } = await supabase.from('opciones').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
+// --- Combos ---
+
+export async function obtenerCombosAdmin(localId) {
+  const { data, error } = await supabase
+    .from('combos')
+    .select('*, combo_items ( id, cantidad, producto_id, productos ( nombre ) )')
+    .eq('local_id', localId)
+    .order('orden')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function crearCombo(payload) {
+  const { data, error } = await supabase.from('combos').insert(payload).select().single()
+  if (error) lanzar(error)
+  return { ...data, combo_items: [] }
+}
+
+export async function actualizarCombo(id, cambios) {
+  const { error } = await supabase.from('combos').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarCombo(id) {
+  const { error } = await supabase.from('combos').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function agregarItemCombo(comboId, productoId, cantidad) {
+  const { data, error } = await supabase
+    .from('combo_items')
+    .insert({ combo_id: comboId, producto_id: productoId, cantidad })
+    .select('id, cantidad, producto_id, productos ( nombre )')
+    .single()
+  if (error) lanzar(error)
+  return data
+}
+
+export async function quitarItemCombo(comboItemId) {
+  const { error } = await supabase.from('combo_items').delete().eq('id', comboItemId)
+  if (error) lanzar(error)
+}

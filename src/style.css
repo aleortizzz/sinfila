@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* Base mínima. Todo lo demás lo hacemos con clases de Tailwind. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  background: #f8fafc; /* slate-50 */
+  color: #0f172a; /* slate-900 */
+}
