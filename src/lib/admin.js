@@ -156,3 +156,51 @@ export async function quitarItemCombo(comboItemId) {
   const { error } = await supabase.from('combo_items').delete().eq('id', comboItemId)
   if (error) lanzar(error)
 }
+
+// --- Promos ---
+
+export async function obtenerPromosAdmin(localId) {
+  const { data, error } = await supabase
+    .from('promos')
+    .select('*, promo_productos ( producto_id, productos ( nombre ) )')
+    .eq('local_id', localId)
+    .order('created_at')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function crearPromo(payload, productoIds) {
+  const { data, error } = await supabase.from('promos').insert(payload).select().single()
+  if (error) lanzar(error)
+  if (productoIds.length) {
+    const { error: errItems } = await supabase
+      .from('promo_productos')
+      .insert(productoIds.map((producto_id) => ({ promo_id: data.id, producto_id })))
+    if (errItems) lanzar(errItems)
+  }
+  return data
+}
+
+export async function actualizarPromo(id, cambios) {
+  const { error } = await supabase.from('promos').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarPromo(id) {
+  const { error } = await supabase.from('promos').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function agregarProductoPromo(promoId, productoId) {
+  const { error } = await supabase.from('promo_productos').insert({ promo_id: promoId, producto_id: productoId })
+  if (error) lanzar(error)
+}
+
+export async function quitarProductoPromo(promoId, productoId) {
+  const { error } = await supabase
+    .from('promo_productos')
+    .delete()
+    .eq('promo_id', promoId)
+    .eq('producto_id', productoId)
+  if (error) lanzar(error)
+}

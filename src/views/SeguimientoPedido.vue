@@ -101,6 +101,9 @@ const mensajePrincipal = computed(() => {
           <span>${{ item.precio_unitario * item.cantidad }}</span>
         </li>
       </ul>
+      <div v-if="pedido.descuento_promos > 0" class="flex justify-between border-t border-slate-200 pt-2 text-sm text-green-600">
+        <span>Descuento (promo)</span><span>-${{ pedido.descuento_promos }}</span>
+      </div>
       <div v-if="pedido.costo_delivery" class="flex justify-between border-t border-slate-200 pt-2 text-sm text-slate-500">
         <span>Envío</span><span>${{ pedido.costo_delivery }}</span>
       </div>
