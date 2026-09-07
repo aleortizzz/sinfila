@@ -658,9 +658,24 @@ negocio real, documentado por si se quiere pulir después.
 Endurecido de paso el check constraint de `promos` (2a): ahora exige
 `n > 0`, `m >= 0` y `precio_especial > 0`.
 
-**Falta (Hito 9b)**: pantalla del admin para crear/editar promos — hoy
-solo se pueden cargar por SQL. También falta mostrar el descuento en el
-carrito ANTES de pagar (hoy se ve recién en la confirmación/seguimiento).
+## Estado actual — Hito 9b: admin de promos CERRADO ✅ (2026-09-08)
+
+`AdminPromos.vue` (`/panel/:slug/admin/promos`, nuevo ítem en el sidebar):
+crear promo (nombre, tipo NxM o precio especial, días, horario, y
+productos incluidos — **obligatorio elegir al menos uno antes de crear**,
+mismo aprendizaje que con los combos vacíos), activar/desactivar,
+agregar/quitar productos de una promo existente, borrar. Para V1 no se
+edita nombre/tipo/días/horario de una promo ya creada — si hay que
+cambiarlos, se borra y se crea de nuevo (simplificación consciente).
+
+También: `SeguimientoPedido.vue` ahora muestra la línea "Descuento
+(promo)" cuando corresponde (el dato ya viajaba en `obtener_pedido_publico`
+desde el Hito 7, solo faltaba mostrarlo).
+
+Pendiente (anotado, no bloqueante): mostrar el descuento en el
+**carrito antes de pagar** (hoy recién se ve en la confirmación/
+seguimiento) — necesitaría repetir la lógica de promos en JS para el
+preview, similar a como el precio de los combos se calcula en el cliente.
 
 **Pendiente, más grande**: elegir una variante específica al armar un
 combo (ej. "este combo lleva las papas con cheddar"). Hoy `combo_items`
