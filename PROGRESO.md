@@ -358,6 +358,26 @@ cambios" guarda todo).
 `promo_porcentaje`. Verificado contra la base: `local_abierto`,
 `promos_vigentes` y `previsualizar_pedido` devuelven bien.
 
+## Estado actual — Menú con páginas de edición (2026-09-08)
+
+Se aplicó el patrón "lista → página de edición" (el de promos) al menú.
+`AdminMenu.vue` bajó de ~770 a ~240 líneas.
+
+- `AdminMenu.vue`: lista. Categorías se editan inline (son un nombre).
+  Productos y combos: "Editar" / "+ Agregar" llevan a su página.
+- `AdminProductoForm.vue` — `menu/productos/nuevo` y `.../:productoId/editar`.
+  Datos del producto + el **armado** (grupos de opciones / opciones), que
+  aparece recién en modo edición (necesita el id). Al crear, hace
+  `router.replace` a la ruta de edición del nuevo para poder cargar el
+  armado sin volver.
+- `AdminComboForm.vue` — `menu/combos/nuevo` y `.../:comboId/editar`.
+  Productos del combo con cantidad, precio sugerido (suma) tachado vs
+  precio real, "usar suma". Se crea oculto; se activa desde la edición.
+- `lib/admin.js`: `obtenerProductoAdmin(id)`, `obtenerComboAdmin(id)`.
+
+Pendiente de este bloque: migrar también a este patrón cualquier form
+inline que quede (por ahora no queda ninguno grande).
+
 ## Estado actual — KDS con vista Caja / Barra / Cocina (2026-09-08)
 
 Rediseño de `Local.vue` (sin migración). Antes: pestañas Todos/Barra/Cocina
