@@ -196,13 +196,13 @@ onBeforeUnmount(() => observer?.disconnect())
         </div>
 
         <div class="mx-auto max-w-5xl px-5">
-          <div class="card -mt-4 flex items-center gap-4 p-5">
-            <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+          <div class="card relative z-10 -mt-14 flex items-center gap-4 p-5">
+            <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <img v-if="local.logo_url" :src="local.logo_url" alt="" class="h-full w-full object-cover" />
-              <span v-else class="text-xl font-extrabold t-brand">{{ local.nombre.charAt(0) }}</span>
+              <span v-else class="text-2xl font-extrabold t-brand">{{ local.nombre.charAt(0) }}</span>
             </div>
             <div class="min-w-0">
-              <h1 class="truncate text-xl font-extrabold text-slate-900 sm:text-2xl">{{ local.nombre }}</h1>
+              <h1 class="truncate text-2xl font-extrabold text-slate-900 sm:text-3xl">{{ local.nombre }}</h1>
               <span
                 :class="[
                   'mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold',
