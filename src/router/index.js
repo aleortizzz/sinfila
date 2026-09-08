@@ -1,10 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { obtenerSesion } from '../lib/auth'
+import { obtenerSesion, soySuperAdmin } from '../lib/auth'
 
 const routes = [
   { path: '/', name: 'home', component: () => import('../views/Home.vue') },
 
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { bare: true } },
+  { path: '/registro', name: 'registro', component: () => import('../views/Registro.vue'), meta: { bare: true } },
+  {
+    path: '/superadmin',
+    name: 'superadmin',
+    component: () => import('../views/SuperAdmin.vue'),
+    meta: { bare: true, requiresAuth: true, requiresSuper: true },
+  },
 
   // Carta pública de un local: sinfila.tizdigital.com/<slug>
   { path: '/:slug', name: 'carta', component: () => import('../views/Carta.vue') },
@@ -49,6 +56,9 @@ router.beforeEach(async (to) => {
   const sesion = await obtenerSesion()
   if (!sesion) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresSuper && !(await soySuperAdmin())) {
+    return { path: '/' }
   }
   return true
 })

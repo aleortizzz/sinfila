@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { iniciarSesion } from '../lib/auth'
+import { iniciarSesion, soySuperAdmin, miLocal } from '../lib/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,7 +16,14 @@ async function enviar() {
   cargando.value = true
   try {
     await iniciarSesion(email.value.trim(), password.value)
-    router.replace(route.query.redirect || '/')
+    if (route.query.redirect) {
+      router.replace(route.query.redirect)
+      return
+    }
+    // Sin destino explícito: mandamos a cada uno a lo suyo.
+    if (await soySuperAdmin()) return router.replace('/superadmin')
+    const l = await miLocal()
+    router.replace(l?.locales?.slug ? `/panel/${l.locales.slug}/admin` : '/registro')
   } catch (e) {
     error.value = e.message
   } finally {

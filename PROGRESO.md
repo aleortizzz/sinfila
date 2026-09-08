@@ -358,6 +358,35 @@ cambios" guarda todo).
 `promo_porcentaje`. Verificado contra la base: `local_abierto`,
 `promos_vigentes` y `previsualizar_pedido` devuelven bien.
 
+## Estado actual — Onboarding autogestionable + panel super-admin (2026-09-08)
+
+Hito 8: alta de locales sin tocar SQL. Migración
+`20260908170000_onboarding.sql`.
+
+- **`registrar_negocio(nombre_negocio, nombre_local, slug)`** — RPC security
+  definer que usa `auth.uid()`. Crea negocio + local
+  (`pendiente_activacion`) + rol `dueño` + 7 filas de `horarios_local`.
+  Valida slug (formato + único) y que la cuenta no tenga ya un local.
+- **`listar_locales_superadmin()`** — todos los locales + datos del negocio,
+  guardada por `es_super_admin()`. `es_super_admin()` ahora tiene grant a
+  `authenticated` para que el front pueda preguntarlo.
+- **`/registro`** (`Registro.vue`): crea la cuenta (`auth.signUp`) + llama a
+  `registrar_negocio`. Si el proyecto exige confirmar el mail, muestra el
+  aviso y el alta se completa al volver logueado. Sugiere el slug desde el
+  nombre del local.
+- **`/superadmin`** (`SuperAdmin.vue`, guard `requiresSuper` en el router):
+  lista de locales con estado/fechas. "Activar (30 días)" con precio
+  mensual → `activar_local`. "Registrar pago" con monto → `registrar_pago`.
+- **`AdminLayout`**: si el local está `pendiente_activacion` o `suspendido`,
+  muestra una pantalla de bloqueo en vez del panel.
+- **`Login`**: sin `redirect` explícito, manda a cada uno a lo suyo
+  (super → `/superadmin`, dueño → su panel, sin local → `/registro`).
+- **`Home`**: CTA "Registrá tu local".
+
+Pendiente: banner de aviso en estado `gracia` (funciona normal pero
+habría que avisar "se corta en X días"); notificaciones por mail de la
+gracia; y que el super-admin pueda suspender/reactivar a mano.
+
 ## Estado actual — "Obligatorio" real + disponibilidad por opción (2026-09-08)
 
 - **`grupos_opciones.obligatorio`** ahora hace algo: obligatorio → primera

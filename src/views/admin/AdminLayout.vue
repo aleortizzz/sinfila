@@ -7,9 +7,29 @@ import { cerrarSesion } from '../../lib/auth'
 const route = useRoute()
 const router = useRouter()
 const local = ref(null)
+const cargado = ref(false)
 
 onMounted(async () => {
   local.value = await obtenerLocalPorSlug(route.params.slug)
+  cargado.value = true
+})
+
+// Estados que bloquean el panel: pendiente de activación o suspendido.
+const bloqueo = computed(() => {
+  if (!local.value) return null
+  if (local.value.estado === 'pendiente_activacion') {
+    return {
+      titulo: 'Tu local está esperando activación',
+      texto: 'Ya recibimos tu registro. Te avisamos apenas lo activemos y arrancan los 30 días de prueba.',
+    }
+  }
+  if (local.value.estado === 'suspendido') {
+    return {
+      titulo: 'Servicio suspendido',
+      texto: 'La suscripción venció. Poneté en contacto para reanudar el servicio y volver a publicar tu carta.',
+    }
+  }
+  return null
 })
 
 const NAV = [
@@ -66,7 +86,21 @@ async function salir() {
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-slate-50 text-slate-900">
+  <!-- Local pendiente de activación o suspendido: pantalla de bloqueo. -->
+  <div v-if="bloqueo" class="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+    <div class="card max-w-md p-8 text-center">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">⏳</div>
+      <h1 class="mt-3 text-xl font-bold text-slate-900">{{ bloqueo.titulo }}</h1>
+      <p class="mt-2 text-sm text-slate-500">{{ bloqueo.texto }}</p>
+      <button type="button" @click="salir" class="btn btn-ghost mt-5">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div v-else-if="cargado && !local" class="flex min-h-screen items-center justify-center bg-slate-100 p-6 text-slate-500">
+    No encontramos este local.
+  </div>
+
+  <div v-else class="flex min-h-screen bg-slate-50 text-slate-900">
     <aside class="flex w-60 shrink-0 flex-col bg-slate-900 px-3 py-5">
       <div class="flex items-center gap-2.5 px-2">
         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-sm font-extrabold text-white">
