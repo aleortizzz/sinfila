@@ -24,6 +24,25 @@ export async function actualizarLocal(id, cambios) {
   if (error) lanzar(error)
 }
 
+export async function obtenerHorariosAdmin(localId) {
+  const { data, error } = await supabase
+    .from('horarios_local')
+    .select('dia, abierto, apertura, cierre')
+    .eq('local_id', localId)
+    .order('dia')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function actualizarHorarioDia(localId, dia, cambios) {
+  const { error } = await supabase
+    .from('horarios_local')
+    .update(cambios)
+    .eq('local_id', localId)
+    .eq('dia', dia)
+  if (error) lanzar(error)
+}
+
 export async function obtenerZonasAdmin(localId) {
   const { data, error } = await supabase
     .from('zonas_delivery')

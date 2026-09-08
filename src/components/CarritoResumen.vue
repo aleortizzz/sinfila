@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { pesos } from '../lib/formato'
 
+defineProps({ cerrado: { type: Boolean, default: false } })
+
 const cart = useCartStore()
 
 // La barra vive siempre abajo. Colapsada = pill con total + cantidad;
@@ -83,6 +85,10 @@ const abierto = ref(false)
         </span>
         <span>{{ pesos(cart.subtotal) }}</span>
       </button>
+
+      <div v-else-if="cerrado" class="btn btn-brand w-full cursor-not-allowed justify-center px-5 py-3.5 text-base opacity-60 shadow-xl">
+        Local cerrado — no se puede pedir
+      </div>
 
       <RouterLink
         v-else

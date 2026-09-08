@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useCartStore } from '../stores/cart'
-import { obtenerLocalPorSlug } from '../lib/locales'
+import { obtenerLocalPorSlug, estaAbierto } from '../lib/locales'
 import { obtenerZonasDelivery, crearPedido, previsualizarPedido } from '../lib/pedidos'
 import { pesos } from '../lib/formato'
 
@@ -72,6 +72,10 @@ onMounted(async () => {
     local.value = await obtenerLocalPorSlug(route.params.slug)
     if (!local.value) {
       error.value = 'No encontramos este local.'
+      return
+    }
+    if (!(await estaAbierto(local.value.id).catch(() => true))) {
+      error.value = 'El local está cerrado en este momento. Volvé cuando abra para hacer tu pedido.'
       return
     }
     tipoEntrega.value = local.value.acepta_retiro ? 'retiro' : 'delivery'

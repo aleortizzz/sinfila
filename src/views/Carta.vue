@@ -1,7 +1,13 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { obtenerLocalPorSlug, obtenerMenu } from '../lib/locales'
+import {
+  obtenerLocalPorSlug,
+  obtenerMenu,
+  estaAbierto,
+  obtenerHorarios,
+  obtenerPromosVigentes,
+} from '../lib/locales'
 import { useCartStore } from '../stores/cart'
 import ProductoCard from '../components/ProductoCard.vue'
 import ComboCard from '../components/ComboCard.vue'
@@ -16,6 +22,64 @@ const local = ref(null)
 const categorias = ref([])
 const productos = ref([])
 const combos = ref([])
+const abierto = ref(true) // hasta saberlo, no bloqueamos nada
+const horarios = ref([])
+const promosVigentes = ref([]) // [{ producto_id, tipo, precio_especial, descuento_pct, n, m }]
+
+// producto_id -> mejor promo para mostrar en la tarjeta. Misma idea que el
+// motor del server: la de mayor descuento para ESE producto. Es solo para
+// mostrar — el precio real lo recalcula crear_pedido / previsualizar_pedido.
+const promoPorProducto = computed(() => {
+  const map = new Map()
+  for (const r of promosVigentes.value) {
+    const prod = productos.value.find((p) => p.id === r.producto_id)
+    if (!prod) continue
+    const precio = Number(prod.precio)
+    let precioPromo = precio
+    let etiqueta = null
+    if (r.tipo === 'precio_especial') {
+      precioPromo = Math.min(precio, Number(r.precio_especial))
+    } else if (r.tipo === 'porcentaje') {
+      precioPromo = Math.round(precio * (1 - Number(r.descuento_pct) / 100))
+      etiqueta = `-${Number(r.descuento_pct)}%`
+    } else if (r.tipo === 'nxm') {
+      etiqueta = `${r.n}x${r.m}`
+    }
+    const ahorro = precio - precioPromo
+    const actual = map.get(r.producto_id)
+    // Nos quedamos con la de más ahorro; si no hay ahorro unitario (nxm),
+    // igual guardamos su etiqueta si no había nada mejor.
+    if (!actual || ahorro > actual.ahorro) {
+      map.set(r.producto_id, { tipo: r.tipo, precioPromo, etiqueta, ahorro })
+    }
+  }
+  return map
+})
+
+const promoDe = (id) => promoPorProducto.value.get(id) ?? null
+
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0]
+
+// Día de hoy en hora de Argentina (0 = domingo, como extract(dow) en la base).
+const hoyDow = computed(() => {
+  const corto = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    weekday: 'short',
+  }).format(new Date())
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(corto)
+})
+
+const horariosOrdenados = computed(() =>
+  ORDEN_SEMANA.map((d) => horarios.value.find((h) => h.dia === d)).filter(Boolean),
+)
+
+const hhmm = (t) => (t ? String(t).slice(0, 5) : '')
+function textoHorario(h) {
+  if (!h || !h.abierto) return 'Cerrado'
+  if (!h.apertura || !h.cierre) return 'Abierto todo el día'
+  return `${hhmm(h.apertura)} – ${hhmm(h.cierre)}`
+}
 
 // Categorías con al menos un producto, en el orden de las categorías.
 const menuAgrupado = computed(() =>
@@ -71,10 +135,18 @@ async function cargar(slug) {
       return
     }
     cart.inicializarParaLocal(slug)
-    const menu = await obtenerMenu(local.value.id)
+    const [menu, ab, hs, prs] = await Promise.all([
+      obtenerMenu(local.value.id),
+      estaAbierto(local.value.id).catch(() => true),
+      obtenerHorarios(local.value.id).catch(() => []),
+      obtenerPromosVigentes(local.value.id).catch(() => []),
+    ])
     categorias.value = menu.categorias
     productos.value = menu.productos
     combos.value = menu.combos
+    abierto.value = ab
+    horarios.value = hs
+    promosVigentes.value = prs
     await nextTick()
     observarSecciones()
   } catch (e) {
@@ -131,11 +203,44 @@ onBeforeUnmount(() => observer?.disconnect())
             </div>
             <div class="min-w-0 pb-1">
               <h1 class="truncate text-2xl font-extrabold text-slate-900 sm:text-3xl">{{ local.nombre }}</h1>
-              <p class="text-sm text-slate-500">No hagas fila: escaneá, elegí y esperá tu pedido.</p>
+              <div class="flex items-center gap-2">
+                <span
+                  :class="[
+                    'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold',
+                    abierto ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600',
+                  ]"
+                >
+                  <span :class="['h-1.5 w-1.5 rounded-full', abierto ? 'bg-green-500' : 'bg-slate-400']" />
+                  {{ abierto ? 'Abierto ahora' : 'Cerrado ahora' }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </header>
+
+      <!-- Aviso de local cerrado -->
+      <div v-if="!abierto" class="mx-auto mt-4 max-w-5xl px-5">
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p class="text-sm font-semibold text-amber-900">El local está cerrado en este momento</p>
+          <p class="mt-0.5 text-sm text-amber-800">
+            Podés mirar la carta, pero no se pueden hacer pedidos hasta que abra.
+          </p>
+          <details v-if="horarios.length" class="mt-2 text-sm text-amber-900">
+            <summary class="cursor-pointer font-medium">Ver horarios</summary>
+            <ul class="mt-2 space-y-0.5">
+              <li
+                v-for="h in horariosOrdenados"
+                :key="h.dia"
+                :class="['flex justify-between', h.dia === hoyDow && 'font-semibold']"
+              >
+                <span>{{ DIAS[h.dia] }}{{ h.dia === hoyDow ? ' (hoy)' : '' }}</span>
+                <span>{{ textoHorario(h) }}</span>
+              </li>
+            </ul>
+          </details>
+        </div>
+      </div>
 
       <!-- Nav de categorías (pegajosa) -->
       <nav
@@ -161,7 +266,7 @@ onBeforeUnmount(() => observer?.disconnect())
           <h2 class="text-lg font-bold text-slate-900">Combos</h2>
           <p class="text-sm text-slate-500">Más rico y más barato que suelto.</p>
           <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <ComboCard v-for="c in combos" :key="c.id" :combo="c" />
+            <ComboCard v-for="c in combos" :key="c.id" :combo="c" :cerrado="!abierto" />
           </div>
         </section>
 
@@ -174,7 +279,13 @@ onBeforeUnmount(() => observer?.disconnect())
         >
           <h2 class="text-lg font-bold text-slate-900">{{ cat.nombre }}</h2>
           <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <ProductoCard v-for="p in cat.productos" :key="p.id" :producto="p" />
+            <ProductoCard
+              v-for="p in cat.productos"
+              :key="p.id"
+              :producto="p"
+              :promo="promoDe(p.id)"
+              :cerrado="!abierto"
+            />
           </div>
         </section>
 
@@ -183,7 +294,7 @@ onBeforeUnmount(() => observer?.disconnect())
         </p>
       </main>
 
-      <CarritoResumen />
+      <CarritoResumen :cerrado="!abierto" />
     </template>
   </div>
 </template>

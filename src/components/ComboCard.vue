@@ -3,7 +3,10 @@ import { computed, ref } from 'vue'
 import { useCartStore } from '../stores/cart'
 import { pesos } from '../lib/formato'
 
-const props = defineProps({ combo: { type: Object, required: true } })
+const props = defineProps({
+  combo: { type: Object, required: true },
+  cerrado: { type: Boolean, default: false },
+})
 const cart = useCartStore()
 
 // Suma de los productos que integran el combo, comprados sueltos — si es
@@ -20,6 +23,7 @@ const ahorro = computed(() => precioSugerido.value - Number(props.combo.precio))
 const agregado = ref(false)
 let t = null
 function agregar() {
+  if (props.cerrado) return
   cart.agregar({
     tipo: 'combo',
     refId: props.combo.id,
@@ -67,7 +71,13 @@ function agregar() {
           <span class="text-lg font-extrabold text-slate-900">{{ pesos(combo.precio) }}</span>
           <span v-if="hayDescuento" class="text-xs text-slate-400 line-through">{{ pesos(precioSugerido) }}</span>
         </div>
-        <button type="button" @click="agregar" class="add-btn" :aria-label="`Agregar ${combo.nombre}`">
+        <button
+          type="button"
+          @click="agregar"
+          :disabled="cerrado"
+          class="add-btn disabled:cursor-not-allowed disabled:opacity-40"
+          :aria-label="`Agregar ${combo.nombre}`"
+        >
           <svg v-if="!agregado" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" />
           </svg>

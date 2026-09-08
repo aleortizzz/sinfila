@@ -22,6 +22,41 @@ export async function obtenerLocalPorSlug(slug) {
   return data
 }
 
+// ¿El local está abierto ahora? La cuenta (con hora de Argentina y horarios
+// que cruzan la medianoche) la hace la función local_abierto() en la base.
+export async function estaAbierto(localId) {
+  const { data, error } = await supabase.rpc('local_abierto', { p_local_id: localId })
+  if (error) throw error
+  return data === true
+}
+
+// Promos que aplican ahora mismo (día + franja horaria ya chequeados en la
+// base), con el producto al que van. La carta las usa para mostrar el
+// precio tachado / la etiqueta de promo.
+export async function obtenerPromosVigentes(localId) {
+  const { data, error } = await supabase.rpc('promos_vigentes', { p_local_id: localId })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    producto_id: r.producto_id,
+    tipo: r.tipo,
+    precio_especial: r.precio_especial,
+    descuento_pct: r.descuento_pct,
+    n: r.n,
+    m: r.m,
+  }))
+}
+
+// Los 7 días de horario para mostrar la grilla en la carta.
+export async function obtenerHorarios(localId) {
+  const { data, error } = await supabase
+    .from('horarios_local')
+    .select('dia, abierto, apertura, cierre')
+    .eq('local_id', localId)
+    .order('dia')
+  if (error) throw error
+  return data ?? []
+}
+
 export async function obtenerMenu(localId) {
   const [categoriasRes, productosRes, combosRes] = await Promise.all([
     supabase

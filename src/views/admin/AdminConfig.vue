@@ -1,13 +1,19 @@
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import {
   actualizarLocal,
+  obtenerHorariosAdmin,
+  actualizarHorarioDia,
   obtenerZonasAdmin,
   crearZona,
   actualizarZona,
   eliminarZona,
 } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
+
+// Índice = dia (0 = domingo, igual que extract(dow) en Postgres).
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0] // lunes primero para mostrar
 
 const props = defineProps({ local: Object })
 
@@ -17,16 +23,10 @@ const guardando = ref(false)
 const guardado = ref(false)
 const errorGuardar = ref(null)
 
-// Copia editable. Los `time` de Postgres llegan como "18:00:00"; el input
-// type=time quiere "18:00". Vacío = null (barra/cocina heredan el general).
+// Copia editable de los campos de "locales". Los horarios NO van acá: son
+// tabla aparte (horarios_local) con guardado inmediato, como las zonas.
 const form = reactive({
   nombre: '',
-  horario_apertura: '',
-  horario_cierre: '',
-  horario_barra_apertura: '',
-  horario_barra_cierre: '',
-  horario_cocina_apertura: '',
-  horario_cocina_cierre: '',
   logo_url: '',
   color_primario: '',
   banner_url: '',
@@ -40,6 +40,11 @@ const form = reactive({
   delivery_costo_fijo: 0,
   delivery_minimo_compra: 0,
 })
+
+const horarios = ref([]) // filas de horarios_local (7)
+const horariosOrdenados = computed(() =>
+  ORDEN_SEMANA.map((d) => horarios.value.find((h) => h.dia === d)).filter(Boolean),
+)
 
 const zonas = ref([])
 const nuevaZona = reactive({ barrio: '', costo: '' })
@@ -59,12 +64,6 @@ watch(
     if (!l || cargado) return
     cargado = true
     form.nombre = l.nombre ?? ''
-    form.horario_apertura = hhmm(l.horario_apertura)
-    form.horario_cierre = hhmm(l.horario_cierre)
-    form.horario_barra_apertura = hhmm(l.horario_barra_apertura)
-    form.horario_barra_cierre = hhmm(l.horario_barra_cierre)
-    form.horario_cocina_apertura = hhmm(l.horario_cocina_apertura)
-    form.horario_cocina_cierre = hhmm(l.horario_cocina_cierre)
     form.logo_url = l.logo_url ?? ''
     form.color_primario = l.color_primario ?? ''
     form.banner_url = l.banner_url ?? ''
@@ -84,11 +83,38 @@ watch(
 
 async function cargar() {
   try {
-    zonas.value = await obtenerZonasAdmin(props.local.id)
+    const [hs, zs] = await Promise.all([
+      obtenerHorariosAdmin(props.local.id),
+      obtenerZonasAdmin(props.local.id),
+    ])
+    horarios.value = hs.map((h) => ({ ...h, apertura: hhmm(h.apertura), cierre: hhmm(h.cierre) }))
+    zonas.value = zs
   } catch (e) {
     error.value = e.message
   } finally {
     cargando.value = false
+  }
+}
+
+// Horarios: guardado inmediato por día (como las zonas).
+async function toggleDiaAbierto(h) {
+  h.abierto = !h.abierto
+  try {
+    await actualizarHorarioDia(props.local.id, h.dia, { abierto: h.abierto })
+  } catch (e) {
+    h.abierto = !h.abierto
+    alert(e.message)
+  }
+}
+
+async function guardarDia(h) {
+  try {
+    await actualizarHorarioDia(props.local.id, h.dia, {
+      apertura: h.apertura || null,
+      cierre: h.cierre || null,
+    })
+  } catch (e) {
+    alert(e.message)
   }
 }
 
@@ -101,12 +127,6 @@ async function guardar() {
   guardando.value = true
   const cambios = {
     nombre: form.nombre.trim(),
-    horario_apertura: form.horario_apertura || null,
-    horario_cierre: form.horario_cierre || null,
-    horario_barra_apertura: form.horario_barra_apertura || null,
-    horario_barra_cierre: form.horario_barra_cierre || null,
-    horario_cocina_apertura: form.horario_cocina_apertura || null,
-    horario_cocina_cierre: form.horario_cocina_cierre || null,
     logo_url: form.logo_url.trim() || null,
     color_primario: form.color_primario.trim() || null,
     banner_url: form.banner_url.trim() || null,
@@ -213,24 +233,29 @@ async function aplicarAjustePorcentaje() {
 
     <!-- Horarios -->
     <div class="card p-5">
-      <h2 class="label">Horarios</h2>
+      <h2 class="label">Horarios de atención</h2>
       <p class="mt-1 text-xs text-slate-400">
-        Barra y cocina vacíos usan el horario general. Zona horaria: Argentina.
+        Zona horaria: Argentina. Para un horario que cruza la medianoche, poné
+        el cierre antes que la apertura (ej. 20:00 a 03:00). Se guarda al toque.
       </p>
-      <div class="mt-3 space-y-3">
-        <div
-          v-for="fila in [
-            ['General', 'horario_apertura', 'horario_cierre'],
-            ['Barra', 'horario_barra_apertura', 'horario_barra_cierre'],
-            ['Cocina', 'horario_cocina_apertura', 'horario_cocina_cierre'],
-          ]"
-          :key="fila[0]"
-          class="flex items-center gap-3"
-        >
-          <span class="w-16 text-sm text-slate-600">{{ fila[0] }}</span>
-          <input v-model="form[fila[1]]" type="time" class="input w-32" />
-          <span class="text-slate-400">a</span>
-          <input v-model="form[fila[2]]" type="time" class="input w-32" />
+      <div class="mt-3 space-y-2">
+        <div v-for="h in horariosOrdenados" :key="h.dia" class="flex flex-wrap items-center gap-3">
+          <span class="w-24 text-sm text-slate-600">{{ DIAS[h.dia] }}</span>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="h.abierto"
+            @click="toggleDiaAbierto(h)"
+            :class="['relative h-5 w-9 shrink-0 rounded-full transition', h.abierto ? 'bg-brand-500' : 'bg-slate-300']"
+          >
+            <span :class="['absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition', h.abierto ? 'left-4' : 'left-0.5']" />
+          </button>
+          <template v-if="h.abierto">
+            <input v-model="h.apertura" type="time" class="input w-32" @blur="guardarDia(h)" />
+            <span class="text-slate-400">a</span>
+            <input v-model="h.cierre" type="time" class="input w-32" @blur="guardarDia(h)" />
+          </template>
+          <span v-else class="text-sm text-slate-400">Cerrado</span>
         </div>
       </div>
     </div>

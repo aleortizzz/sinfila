@@ -26,6 +26,7 @@ const form = reactive({
   n: 3,
   m: 2,
   precio_especial: '',
+  descuento_pct: '',
   dias_semana: [],
   hora_desde: '00:00',
   hora_hasta: '23:59',
@@ -69,6 +70,7 @@ function resetForm() {
   form.n = 3
   form.m = 2
   form.precio_especial = ''
+  form.descuento_pct = ''
   form.dias_semana = []
   form.hora_desde = '00:00'
   form.hora_hasta = '23:59'
@@ -95,6 +97,9 @@ async function guardarPromo() {
   if (form.tipo === 'precio_especial' && !(form.precio_especial > 0)) {
     return alert('Cargá un precio especial mayor a 0.')
   }
+  if (form.tipo === 'porcentaje' && !(form.descuento_pct > 0 && form.descuento_pct <= 100)) {
+    return alert('El descuento tiene que ser entre 1 y 100%.')
+  }
 
   const payload = {
     local_id: props.local.id,
@@ -103,6 +108,7 @@ async function guardarPromo() {
     n: form.tipo === 'nxm' ? form.n : null,
     m: form.tipo === 'nxm' ? form.m : null,
     precio_especial: form.tipo === 'precio_especial' ? Number(form.precio_especial) : null,
+    descuento_pct: form.tipo === 'porcentaje' ? Number(form.descuento_pct) : null,
     dias_semana: form.dias_semana,
     hora_desde: form.hora_desde,
     hora_hasta: form.hora_hasta,
@@ -155,7 +161,9 @@ async function quitarProducto(promo, productoId) {
 }
 
 function resumenTipo(promo) {
-  return promo.tipo === 'nxm' ? `${promo.n}x${promo.m}` : `Precio especial: $${promo.precio_especial}`
+  if (promo.tipo === 'nxm') return `${promo.n}x${promo.m}`
+  if (promo.tipo === 'porcentaje') return `${Number(promo.descuento_pct)}% de descuento`
+  return `Precio especial: $${promo.precio_especial}`
 }
 
 function resumenDias(promo) {
@@ -183,20 +191,27 @@ function resumenDias(promo) {
     <form v-if="mostrarForm" @submit.prevent="guardarPromo" class="mt-4 space-y-3 rounded-lg bg-slate-50 p-4">
       <input v-model="form.nombre" type="text" placeholder="Nombre (ej. 3x2 en tragos de $8000)" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" />
 
-      <div class="flex gap-2">
+      <div class="grid grid-cols-3 gap-2">
         <button
           type="button"
           @click="form.tipo = 'nxm'"
-          :class="['flex-1 rounded-md border px-3 py-1.5 text-sm', form.tipo === 'nxm' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
+          :class="['rounded-md border px-2 py-1.5 text-xs', form.tipo === 'nxm' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
         >
-          NxM (3x2, 2x1…)
+          NxM (3x2…)
+        </button>
+        <button
+          type="button"
+          @click="form.tipo = 'porcentaje'"
+          :class="['rounded-md border px-2 py-1.5 text-xs', form.tipo === 'porcentaje' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
+        >
+          Descuento %
         </button>
         <button
           type="button"
           @click="form.tipo = 'precio_especial'"
-          :class="['flex-1 rounded-md border px-3 py-1.5 text-sm', form.tipo === 'precio_especial' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
+          :class="['rounded-md border px-2 py-1.5 text-xs', form.tipo === 'precio_especial' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
         >
-          Precio especial (happy hour)
+          Precio fijo
         </button>
       </div>
 
@@ -206,9 +221,15 @@ function resumenDias(promo) {
         <span class="text-sm text-slate-500">pagás</span>
         <input v-model.number="form.m" type="number" min="1" class="w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm" />
       </div>
+      <div v-else-if="form.tipo === 'porcentaje'" class="flex items-center gap-2">
+        <span class="text-sm text-slate-500">Descuento</span>
+        <input v-model="form.descuento_pct" type="number" min="1" max="100" step="1" class="w-24 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+        <span class="text-sm text-slate-500">% sobre el precio de cada producto</span>
+      </div>
       <div v-else class="flex items-center gap-2">
-        <span class="text-sm text-slate-500">Precio especial</span>
+        <span class="text-sm text-slate-500">Precio fijo</span>
         <input v-model="form.precio_especial" type="number" min="0" step="1" class="w-32 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+        <span class="text-xs text-slate-400">mismo precio para todos los productos de la promo</span>
       </div>
 
       <div>

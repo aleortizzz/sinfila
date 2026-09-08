@@ -3,7 +3,13 @@ import { reactive, ref } from 'vue'
 import { useCartStore } from '../stores/cart'
 import { pesos } from '../lib/formato'
 
-const props = defineProps({ producto: { type: Object, required: true } })
+const props = defineProps({
+  producto: { type: Object, required: true },
+  // Mejor promo vigente para este producto: { tipo, precioPromo, etiqueta, ahorro }.
+  promo: { type: Object, default: null },
+  // Local cerrado: se puede mirar pero no agregar.
+  cerrado: { type: Boolean, default: false },
+})
 const cart = useCartStore()
 
 // Selección actual por grupo de opciones: { [grupoId]: opcionId }.
@@ -33,6 +39,7 @@ function opcionesElegidas() {
 const agregado = ref(false)
 let t = null
 function agregar() {
+  if (props.cerrado) return
   cart.agregar({
     tipo: 'producto',
     refId: props.producto.id,
@@ -48,7 +55,14 @@ function agregar() {
 </script>
 
 <template>
-  <article class="card flex flex-col overflow-hidden">
+  <article class="card relative flex flex-col overflow-hidden">
+    <span
+      v-if="promo"
+      class="absolute left-3 top-3 z-10 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
+    >
+      {{ promo.etiqueta || 'Promo' }}
+    </span>
+
     <div class="aspect-4/3 w-full overflow-hidden bg-slate-100">
       <img
         v-if="producto.foto_url"
@@ -96,8 +110,30 @@ function agregar() {
       </div>
 
       <div class="mt-auto flex items-center justify-between pt-4">
-        <span class="text-lg font-extrabold text-slate-900">{{ pesos(producto.precio) }}</span>
-        <button type="button" @click="agregar" class="add-btn" :aria-label="`Agregar ${producto.nombre}`">
+        <div class="flex items-baseline gap-1.5">
+          <span
+            v-if="promo && promo.precioPromo < Number(producto.precio)"
+            class="text-lg font-extrabold t-brand"
+          >
+            {{ pesos(promo.precioPromo) }}
+          </span>
+          <span
+            :class="
+              promo && promo.precioPromo < Number(producto.precio)
+                ? 'text-xs text-slate-400 line-through'
+                : 'text-lg font-extrabold text-slate-900'
+            "
+          >
+            {{ pesos(producto.precio) }}
+          </span>
+        </div>
+        <button
+          type="button"
+          @click="agregar"
+          :disabled="cerrado"
+          class="add-btn disabled:cursor-not-allowed disabled:opacity-40"
+          :aria-label="`Agregar ${producto.nombre}`"
+        >
           <svg v-if="!agregado" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" />
           </svg>

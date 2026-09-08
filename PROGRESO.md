@@ -283,6 +283,47 @@ tiene los GRANT columna por columna para el dueño y la policy de
 - `AdminHome.vue`: la tarjeta "Configuración del local" ahora enlaza.
 - `npm run build` OK. **Falta probar logueado como dueño en el navegador.**
 
+## Estado actual — Horarios por día + carta abierto/cerrado (2026-09-08)
+
+Migración `20260908140000_horarios_local.sql`:
+- Tabla `horarios_local` (7 filas por local: `dia` 0-6, `abierto`, `apertura`,
+  `cierre`). Cruzar medianoche = cierre <= apertura. RLS: público lee,
+  dueño escribe. Backfill de los locales existentes desde
+  `locales.horario_*` (esas columnas quedan, sin uso por ahora).
+- `local_abierto(local_id)` — bool, hora de Argentina, contempla el tramo
+  de hoy y la cola de ayer. Sin filas → true (no bloquear por dato faltante).
+- Trigger `before insert on pedidos` que rechaza el pedido si el local está
+  cerrado (cubre cualquier camino, no solo el RPC).
+- `AdminConfig`: la sección Horarios pasó a editor de 7 días (switch
+  abierto/cerrado + rango por día, guardado inmediato). Se sacaron los
+  campos General/Barra/Cocina de la UI.
+- `Carta`: pill "Abierto ahora / Cerrado ahora" en el hero; cuando está
+  cerrado, aviso + grilla de horarios y se deshabilita agregar al carrito
+  y el CTA de pago. `Checkout` también corta si está cerrado.
+
+## Estado actual — Tercer tipo de promo: % + promo en la carta (2026-09-08)
+
+Migración `20260908150000_promo_porcentaje.sql`:
+- `promos.tipo` ahora acepta `'porcentaje'` + columna `descuento_pct`
+  (1-100). Motivo: `precio_especial` fija un precio plano y solo sirve si
+  todos los productos valen parecido (trago $8000→$7000 ok, pero papas
+  $5000 quedarían más caras). El % se adapta a cada precio.
+- `calcular_descuentos_promo()` reescrita con la rama `porcentaje`
+  (`round(precio * pct/100, 2)`) en el score y en el descuento. `nxm` y
+  `precio_especial` sin cambios.
+- `promos_vigentes(local_id)` — RPC que devuelve las promos activas ahora
+  (día + franja ya chequeados) con su `producto_id`. La usa la carta.
+- `AdminPromos`: tercer botón "Descuento %" + input, validación y resumen.
+- `Carta` + `ProductoCard`: badge de promo (`-20%`, `3x2`, o "Promo") y
+  precio tachado → precio con promo cuando hay una vigente. Es solo
+  visual; el precio real lo recalcula `crear_pedido`/`previsualizar_pedido`.
+
+**PENDIENTE APLICAR** (3 migraciones sin pushear):
+`20260908130000_previsualizar_pedido`, `20260908140000_horarios_local`,
+`20260908150000_promo_porcentaje` → `npx supabase db push`. Hasta entonces
+el checkout no muestra el descuento y la carta no muestra abierto/cerrado
+ni promos (degrada sin romper).
+
 ## Patrón de UI recurrente
 
 "**Filtrar + multiseleccionar + aplicar**" aparece en 3 lugares: editor de
