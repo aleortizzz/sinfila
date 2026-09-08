@@ -237,6 +237,50 @@ productos, formato de moneda en el resto de las pantallas, y que el dueño
 edite branding (logo/color/banner) desde el admin — eso va con "Config del
 local" (Hito 8b).
 
+## Estado actual — Preview de promo en el checkout (2026-09-08)
+
+Cierra el pendiente del Hito 9b ("ver el descuento antes de pagar").
+
+- Migración `20260908130000_previsualizar_pedido.sql`: función
+  `previsualizar_pedido(payload)` — corre el MISMO cálculo que
+  `crear_pedido` (precio real + opciones + `calcular_descuentos_promo` del
+  Hito 9a) pero **sin insertar**. Devuelve
+  `{ subtotal, descuento_promos, total, items }`. `security definer`,
+  grant a `anon`/`authenticated`. Sin duplicar lógica en JS → el número que
+  muestra el checkout es exactamente el que se cobra.
+- `Checkout.vue`: llama a la función al entrar y al tocar el carrito
+  (debounce 250 ms). Muestra línea "Descuento (promo)" y usa el total con
+  descuento. Si la función falla (no desplegada / red), cae al subtotal
+  sin promo sin romper. Formato `pesos()` en todos los importes.
+- Bug de paso: `obtenerPedidosActivos` no incluía `avisado`, así que los
+  pedidos esperando retiro desaparecían del KDS al recargar. Corregido.
+- **Pendiente**: aplicar la migración (`supabase db push`) y probar con las
+  promos cargadas. Pendiente aparte: mostrar el descuento también en el
+  carrito de la carta (misma llamada, no está cableado ahí todavía).
+
+## Estado actual — Hito 8b: Config del local en progreso (2026-09-08)
+
+Pantalla de configuración del local (`/panel/:slug/admin/config`, nuevo
+ítem "Configuración" en el sidebar). **Sin migración**: el esquema base ya
+tiene los GRANT columna por columna para el dueño y la policy de
+`zonas_delivery`.
+
+- `lib/admin.js`: `actualizarLocal()` + CRUD de `zonas_delivery`
+  (`obtenerZonasAdmin`/`crearZona`/`actualizarZona`/`eliminarZona`).
+- `lib/locales.js`: `obtenerLocalPorSlug` ahora trae también las 6 columnas
+  de horario (las necesita la pantalla de config; la carta las puede usar
+  más adelante para "abierto/cerrado").
+- `AdminConfig.vue`: un `form` sembrado del `local`, con secciones Datos /
+  Horarios (general + barra + cocina, vacío hereda el general) / Imagen de
+  la carta (logo, banner, color principal con color-picker — alimentan el
+  rediseño visual) / Pago (switches + alias/CBU) / Entrega (switches, modo
+  fijo vs por_barrio, costo, mínimo, y lista de zonas con CRUD inmediato).
+  Barra fija abajo con "Guardar cambios". Al guardar hace `Object.assign`
+  sobre el `local` compartido, así el sidebar y la carta reflejan el
+  cambio sin recargar. Errores de permiso de columna se traducen.
+- `AdminHome.vue`: la tarjeta "Configuración del local" ahora enlaza.
+- `npm run build` OK. **Falta probar logueado como dueño en el navegador.**
+
 ## Patrón de UI recurrente
 
 "**Filtrar + multiseleccionar + aplicar**" aparece en 3 lugares: editor de

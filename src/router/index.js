@@ -28,6 +28,7 @@ const routes = [
       { path: '', name: 'admin-home', component: () => import('../views/admin/AdminHome.vue') },
       { path: 'menu', name: 'admin-menu', component: () => import('../views/admin/AdminMenu.vue') },
       { path: 'promos', name: 'admin-promos', component: () => import('../views/admin/AdminPromos.vue') },
+      { path: 'config', name: 'admin-config', component: () => import('../views/admin/AdminConfig.vue') },
     ],
   },
 ]

@@ -9,6 +9,9 @@ export async function obtenerLocalPorSlug(slug) {
     .from('locales')
     .select(
       `id, nombre, slug, estado, logo_url, color_primario, banner_url,
+       horario_apertura, horario_cierre,
+       horario_barra_apertura, horario_barra_cierre,
+       horario_cocina_apertura, horario_cocina_cierre,
        acepta_retiro, acepta_delivery,
        acepta_efectivo, acepta_transferencia, alias_transferencia, cbu_transferencia,
        delivery_costo_modo, delivery_costo_fijo, delivery_minimo_compra`,

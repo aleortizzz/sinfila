@@ -13,6 +13,47 @@ function lanzar(error) {
 // filtra disponible=true para la carta pública), acá se ve TODO — el
 // dueño necesita administrar lo que está oculto también.
 
+// --- Config del local ---
+// El dueño tiene UPDATE columna por columna sobre "locales" (ver los GRANT
+// en la migración base): puede tocar nombre/horarios/branding/pago/delivery
+// pero NO estado/trial_hasta. Si intenta colar una de esas, Postgres tira
+// "permission denied for column" y lo vemos acá.
+
+export async function actualizarLocal(id, cambios) {
+  const { error } = await supabase.from('locales').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function obtenerZonasAdmin(localId) {
+  const { data, error } = await supabase
+    .from('zonas_delivery')
+    .select('id, barrio, costo')
+    .eq('local_id', localId)
+    .order('barrio')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function crearZona(localId, barrio, costo) {
+  const { data, error } = await supabase
+    .from('zonas_delivery')
+    .insert({ local_id: localId, barrio, costo })
+    .select('id, barrio, costo')
+    .single()
+  if (error) lanzar(error)
+  return data
+}
+
+export async function actualizarZona(id, cambios) {
+  const { error } = await supabase.from('zonas_delivery').update(cambios).eq('id', id)
+  if (error) lanzar(error)
+}
+
+export async function eliminarZona(id) {
+  const { error } = await supabase.from('zonas_delivery').delete().eq('id', id)
+  if (error) lanzar(error)
+}
+
 export async function obtenerCategoriasAdmin(localId) {
   const { data, error } = await supabase
     .from('categorias')

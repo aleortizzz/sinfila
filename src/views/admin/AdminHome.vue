@@ -54,11 +54,14 @@ const stats = [
         <span class="mt-3 inline-block text-sm font-medium t-brand">Abrir →</span>
       </RouterLink>
 
-      <div class="card p-5 opacity-60">
+      <RouterLink
+        :to="`/panel/${local.slug}/admin/config`"
+        class="card p-5 transition hover:border-brand-300 hover:shadow-md"
+      >
         <p class="text-base font-semibold text-slate-900">Configuración del local</p>
-        <p class="mt-1 text-sm text-slate-500">Horarios, branding, pago y delivery.</p>
-        <span class="mt-3 inline-block text-sm font-medium text-slate-400">Próximo hito</span>
-      </div>
+        <p class="mt-1 text-sm text-slate-500">Horarios, imagen de la carta, pago y delivery.</p>
+        <span class="mt-3 inline-block text-sm font-medium t-brand">Abrir →</span>
+      </RouterLink>
     </div>
   </section>
 </template>
