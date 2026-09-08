@@ -44,6 +44,12 @@ const form = reactive({
 const zonas = ref([])
 const nuevaZona = reactive({ barrio: '', costo: '' })
 
+// Ajuste en masa del costo de todas las zonas por porcentaje (ej. "los
+// envíos subieron 10%") — evita editar barrio por barrio.
+const ajustePct = ref(null)
+const ajusteSigno = ref('+')
+const aplicandoAjuste = ref(false)
+
 const hhmm = (t) => (t ? String(t).slice(0, 5) : '')
 
 let cargado = false
@@ -158,6 +164,31 @@ async function quitarZona(z) {
   if (!confirm(`¿Quitar la zona "${z.barrio}"?`)) return
   await eliminarZona(z.id)
   zonas.value = zonas.value.filter((x) => x.id !== z.id)
+}
+
+async function aplicarAjustePorcentaje() {
+  const pct = Number(ajustePct.value)
+  if (!pct || pct <= 0) return
+  const factor = 1 + (ajusteSigno.value === '+' ? pct : -pct) / 100
+  if (factor <= 0) {
+    alert('No se puede bajar 100% o más.')
+    return
+  }
+  const verbo = ajusteSigno.value === '+' ? 'Aumentar' : 'Bajar'
+  if (!confirm(`${verbo} ${pct}% el costo de ${zonas.value.length} zona(s)?`)) return
+  aplicandoAjuste.value = true
+  try {
+    for (const z of zonas.value) {
+      const nuevo = Math.max(0, Math.round(Number(z.costo) * factor))
+      await actualizarZona(z.id, { costo: nuevo })
+      z.costo = nuevo
+    }
+    ajustePct.value = null
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    aplicandoAjuste.value = false
+  }
 }
 </script>
 
@@ -336,6 +367,36 @@ async function quitarZona(z) {
               </span>
             </p>
 
+            <div v-if="zonas.length" class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2.5 text-sm">
+              <span class="text-slate-600">Ajustar todas:</span>
+              <div class="flex overflow-hidden rounded-md border border-slate-300">
+                <button
+                  type="button"
+                  @click="ajusteSigno = '+'"
+                  :class="['px-2.5 py-1', ajusteSigno === '+' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600']"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  @click="ajusteSigno = '-'"
+                  :class="['border-l border-slate-300 px-2.5 py-1', ajusteSigno === '-' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600']"
+                >
+                  −
+                </button>
+              </div>
+              <input v-model.number="ajustePct" type="number" min="0" step="1" placeholder="10" class="input w-20 py-1" />
+              <span class="text-slate-500">%</span>
+              <button
+                type="button"
+                :disabled="!ajustePct || aplicandoAjuste"
+                @click="aplicarAjustePorcentaje"
+                class="btn btn-ghost px-3 py-1 text-xs"
+              >
+                {{ aplicandoAjuste ? 'Aplicando…' : `Aplicar a ${zonas.length} zona(s)` }}
+              </button>
+            </div>
+
             <ul class="mt-2 space-y-2">
               <li v-for="z in zonas" :key="z.id" class="flex items-center gap-2">
                 <input v-model="z.barrio" type="text" @blur="guardarZona(z)" class="input flex-1" />
@@ -347,7 +408,6 @@ async function quitarZona(z) {
                   step="1"
                   @blur="guardarZona(z)"
                   class="input w-28"
-                  :disabled="form.delivery_costo_modo === 'fijo'"
                 />
                 <button type="button" @click="quitarZona(z)" class="text-xs font-medium text-red-500 hover:text-red-700">
                   Quitar
