@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { obtenerLocalPorSlug } from '../lib/locales'
 import { obtenerPedidosActivos, obtenerPedidoConItems, actualizarPedido, suscribirseAPedidos } from '../lib/pedidos'
+import { pesos } from '../lib/formato'
 import { supabase } from '../lib/supabase'
 import { cerrarSesion } from '../lib/auth'
 
@@ -18,7 +19,16 @@ const local = ref(null)
 // imposible que un pedido aparezca dos veces en pantalla.
 const pedidosPorId = reactive(new Map())
 const pedidos = computed(() => [...pedidosPorId.values()].sort((a, b) => a.numero - b.numero))
-const filtroEstacion = ref('todos') // 'todos' | 'barra' | 'cocina'
+
+// Vistas:
+//  - caja: mostrador. Ve TODO el ciclo con todos los datos (cliente, pago,
+//    entrega). El pedido entra 'pendiente' y solo se ve acá hasta que caja
+//    confirma el pago/pedido → recién ahí pasa a preparación.
+//  - barra / cocina: solo pedidos ya confirmados (en_preparacion) que les
+//    tocan y que todavía no marcaron listos. Tarjeta mínima: sin pago ni
+//    entrega, solo lo que hace falta para preparar.
+const vista = ref('caja') // 'caja' | 'barra' | 'cocina'
+const esCaja = computed(() => vista.value === 'caja')
 
 let canal = null
 
@@ -96,25 +106,21 @@ onUnmounted(() => {
   if (canal) supabase.removeChannel(canal)
 })
 
-// En la vista de una estación, un pedido solo tiene sentido mientras esa
-// estación todavía tenga algo pendiente: ni pedidos que no le tocan, ni los
-// que esa estación ya marcó lista (aunque el pedido en conjunto siga
-// "en_preparación" esperando a la otra estación) — esos quedan solo en
-// "Todos".
 const pedidosFiltrados = computed(() => {
-  if (filtroEstacion.value === 'todos') return pedidos.value
-  const requiere = filtroEstacion.value === 'barra' ? 'requiere_barra' : 'requiere_cocina'
-  const lista = filtroEstacion.value === 'barra' ? 'barra_lista' : 'cocina_lista'
-  return pedidos.value.filter((p) => p[requiere] && !p[lista])
+  if (esCaja.value) return pedidos.value
+  const requiere = vista.value === 'barra' ? 'requiere_barra' : 'requiere_cocina'
+  const lista = vista.value === 'barra' ? 'barra_lista' : 'cocina_lista'
+  return pedidos.value.filter(
+    (p) => p.estado === 'en_preparacion' && p[requiere] && !p[lista],
+  )
 })
 
 function itemsVisibles(pedido) {
-  if (filtroEstacion.value === 'todos') return pedido.pedido_items
-  return pedido.pedido_items.filter((i) => i.estacion === filtroEstacion.value)
+  if (esCaja.value) return pedido.pedido_items
+  return pedido.pedido_items.filter((i) => i.estacion === vista.value)
 }
 
-// El valor de "estado" en la base es lenguaje de sistema (útil para el
-// código); acá lo traducimos a algo que lea un humano en la pantalla.
+// El valor de "estado" en la base es lenguaje de sistema; acá lo traducimos.
 function etiquetaEstado(p) {
   const delivery = p.tipo_entrega === 'delivery'
   return (
@@ -136,6 +142,11 @@ function colorEstado(estado) {
   }[estado]
 }
 
+// Etiqueta del botón que abre la preparación, según el método de pago.
+function textoConfirmar(p) {
+  return p.metodo_pago === 'transferencia' ? 'Confirmar pago e iniciar' : 'Aceptar e iniciar'
+}
+
 async function aceptar(p) {
   await actualizarPedido(p.id, { estado: 'en_preparacion' })
 }
@@ -145,10 +156,9 @@ async function rechazar(p) {
 async function marcarEstacionLista(p, estacion) {
   await actualizarPedido(p.id, { [`${estacion}_lista`]: true })
 }
-// "Listo" (cocina/barra terminaron) -> "avisado": se le avisa al cliente
-// que venga a buscarlo (más adelante esto dispara el push al celu del
-// cliente). El pedido sigue en pantalla hasta que alguien confirma que
-// se lo llevó de verdad.
+// "Listo" (cocina/barra terminaron) -> "avisado": se le avisa al cliente que
+// venga a buscarlo. El pedido sigue en pantalla hasta que se confirma la
+// entrega de verdad.
 async function avisarListo(p) {
   await actualizarPedido(p.id, { estado: 'avisado' })
 }
@@ -196,18 +206,18 @@ async function salir() {
       <div class="mx-auto max-w-6xl p-6">
         <div class="flex gap-2">
           <button
-            v-for="op in [['todos', 'Todos'], ['barra', 'Barra'], ['cocina', 'Cocina']]"
+            v-for="op in [['caja', 'Caja'], ['barra', 'Barra'], ['cocina', 'Cocina']]"
             :key="op[0]"
             type="button"
-            @click="filtroEstacion = op[0]"
-            :class="['chip', filtroEstacion === op[0] && 'chip-active']"
+            @click="vista = op[0]"
+            :class="['chip', vista === op[0] && 'chip-active']"
           >
             {{ op[1] }}
           </button>
         </div>
 
         <p v-if="pedidosFiltrados.length === 0" class="mt-10 text-center text-slate-500">
-          No hay pedidos activos.
+          {{ esCaja ? 'No hay pedidos activos.' : 'No hay nada para preparar en esta estación.' }}
         </p>
 
         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -216,55 +226,55 @@ async function salir() {
             :key="p.id"
             :class="['rounded-2xl border-2 bg-white p-4 shadow-sm', colorEstado(p.estado)]"
           >
-            <div class="flex items-center justify-between">
-              <span class="text-xl font-extrabold text-slate-900">#{{ p.numero }}</span>
-              <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
-                {{ etiquetaEstado(p) }}
-              </span>
-            </div>
-
-            <p class="mt-2 font-semibold text-slate-900">{{ p.nombre_cliente }}</p>
-            <p class="text-sm text-slate-500">{{ p.telefono_cliente }}</p>
-            <p class="mt-1 text-sm text-slate-500">
-              {{ p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏠 Retiro' }}
-              <span v-if="p.tipo_entrega === 'delivery'">— {{ p.direccion_calle }} {{ p.direccion_numero }}, {{ p.direccion_barrio }}</span>
-            </p>
-            <p class="text-sm text-slate-500">
-              {{ p.metodo_pago === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia' }}
-              <span v-if="p.metodo_pago === 'transferencia'">
-                {{ p.transferencia_avisada ? '(avisó que ya transfirió)' : '(todavía no avisó)' }}
-              </span>
-            </p>
-
-            <ul class="mt-3 space-y-1 border-t border-slate-200/70 pt-2 text-sm">
-              <li v-for="item in itemsVisibles(p)" :key="item.id">
-                <span class="font-medium">{{ item.cantidad }}×</span> {{ item.nombre }}
-                <span v-if="item.opciones_elegidas?.length" class="text-xs text-slate-500">
-                  ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
+            <!-- ===== Vista Caja / mostrador ===== -->
+            <template v-if="esCaja">
+              <div class="flex items-center justify-between">
+                <span class="text-xl font-extrabold text-slate-900">#{{ p.numero }}</span>
+                <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                  {{ etiquetaEstado(p) }}
                 </span>
-                <span class="text-xs text-slate-400">· {{ item.estacion }}</span>
-              </li>
-            </ul>
+              </div>
 
-            <p class="mt-2 text-right font-bold text-slate-900">${{ p.total }}</p>
+              <p class="mt-2 font-semibold text-slate-900">{{ p.nombre_cliente }}</p>
+              <p class="text-sm text-slate-500">{{ p.telefono_cliente }}</p>
+              <p class="mt-1 text-sm text-slate-500">
+                {{ p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏠 Retiro' }}
+                <span v-if="p.tipo_entrega === 'delivery'">— {{ p.direccion_calle }} {{ p.direccion_numero }}, {{ p.direccion_barrio }}</span>
+              </p>
+              <p class="text-sm text-slate-500">
+                {{ p.metodo_pago === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia' }}
+                <span v-if="p.metodo_pago === 'transferencia'">
+                  {{ p.transferencia_avisada ? '· avisó que transfirió' : '· todavía no avisó' }}
+                </span>
+              </p>
 
-            <div class="mt-3 flex flex-wrap gap-2">
-              <template v-if="p.estado === 'pendiente'">
-                <button type="button" @click="aceptar(p)" class="btn btn-dark px-3 py-1.5 text-xs">
-                  Iniciar preparación
-                </button>
-                <button
-                  type="button"
-                  @click="rechazar(p)"
-                  class="btn border border-red-300 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Rechazar
-                </button>
-              </template>
+              <ul class="mt-3 space-y-1 border-t border-slate-200/70 pt-2 text-sm">
+                <li v-for="item in p.pedido_items" :key="item.id">
+                  <span class="font-medium">{{ item.cantidad }}×</span> {{ item.nombre }}
+                  <span v-if="item.opciones_elegidas?.length" class="text-xs text-slate-500">
+                    ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
+                  </span>
+                  <span class="text-xs text-slate-400">· {{ item.estacion }}</span>
+                </li>
+              </ul>
 
-              <template v-else-if="p.estado === 'en_preparacion'">
-                <!-- Vista Todos: solo el estado de cada estación (acá no se accionan). -->
-                <template v-if="filtroEstacion === 'todos'">
+              <p class="mt-2 text-right font-bold text-slate-900">{{ pesos(p.total) }}</p>
+
+              <div class="mt-3 flex flex-wrap gap-2">
+                <template v-if="p.estado === 'pendiente'">
+                  <button type="button" @click="aceptar(p)" class="btn btn-dark px-3 py-1.5 text-xs">
+                    {{ textoConfirmar(p) }}
+                  </button>
+                  <button
+                    type="button"
+                    @click="rechazar(p)"
+                    class="btn border border-red-300 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                  >
+                    Rechazar
+                  </button>
+                </template>
+
+                <template v-else-if="p.estado === 'en_preparacion'">
                   <span v-if="p.requiere_barra" :class="p.barra_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
                     {{ p.barra_lista ? '✓ Barra lista' : '⏳ Falta barra' }}
                   </span>
@@ -272,45 +282,61 @@ async function salir() {
                     {{ p.cocina_lista ? '✓ Cocina lista' : '⏳ Falta cocina' }}
                   </span>
                 </template>
-                <!-- Vista Barra/Cocina: ya está filtrado a lo que falta, un solo botón. -->
-                <button
-                  v-else
-                  type="button"
-                  @click="marcarEstacionLista(p, filtroEstacion)"
-                  class="btn btn-dark px-3 py-1.5 text-xs"
-                >
-                  Pedido listo
-                </button>
-              </template>
 
-              <template v-else-if="p.estado === 'listo'">
-                <button type="button" @click="avisarListo(p)" class="btn btn-dark px-3 py-1.5 text-xs">
-                  Listo para entregar
-                </button>
-                <a
-                  :href="linkWhatsapp(p)"
-                  target="_blank"
-                  rel="noopener"
-                  class="btn border border-green-300 px-3 py-1.5 text-xs text-green-700 hover:bg-green-50"
-                >
-                  Avisar por WhatsApp
-                </a>
-              </template>
+                <template v-else-if="p.estado === 'listo'">
+                  <button type="button" @click="avisarListo(p)" class="btn btn-dark px-3 py-1.5 text-xs">
+                    Listo para entregar
+                  </button>
+                  <a
+                    :href="linkWhatsapp(p)"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn border border-green-300 px-3 py-1.5 text-xs text-green-700 hover:bg-green-50"
+                  >
+                    Avisar por WhatsApp
+                  </a>
+                </template>
 
-              <template v-else-if="p.estado === 'avisado'">
-                <button type="button" @click="entregar(p)" class="btn btn-dark px-3 py-1.5 text-xs">
-                  Marcar entregado
-                </button>
-                <a
-                  :href="linkWhatsapp(p)"
-                  target="_blank"
-                  rel="noopener"
-                  class="btn border border-green-300 px-3 py-1.5 text-xs text-green-700 hover:bg-green-50"
-                >
-                  Avisar por WhatsApp
-                </a>
-              </template>
-            </div>
+                <template v-else-if="p.estado === 'avisado'">
+                  <button type="button" @click="entregar(p)" class="btn btn-dark px-3 py-1.5 text-xs">
+                    Marcar entregado
+                  </button>
+                  <a
+                    :href="linkWhatsapp(p)"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn border border-green-300 px-3 py-1.5 text-xs text-green-700 hover:bg-green-50"
+                  >
+                    Avisar por WhatsApp
+                  </a>
+                </template>
+              </div>
+            </template>
+
+            <!-- ===== Vista Barra / Cocina: solo lo necesario para preparar ===== -->
+            <template v-else>
+              <div class="flex items-baseline justify-between">
+                <span class="text-2xl font-extrabold text-slate-900">#{{ p.numero }}</span>
+                <span class="text-sm font-medium text-slate-500">{{ p.nombre_cliente }}</span>
+              </div>
+
+              <ul class="mt-3 space-y-1 border-t border-slate-200/70 pt-3 text-base">
+                <li v-for="item in itemsVisibles(p)" :key="item.id">
+                  <span class="font-bold">{{ item.cantidad }}×</span> {{ item.nombre }}
+                  <span v-if="item.opciones_elegidas?.length" class="text-sm text-slate-500">
+                    ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
+                  </span>
+                </li>
+              </ul>
+
+              <button
+                type="button"
+                @click="marcarEstacionLista(p, vista)"
+                class="btn btn-dark mt-3 w-full py-2 text-sm"
+              >
+                Pedido listo
+              </button>
+            </template>
           </article>
         </div>
       </div>

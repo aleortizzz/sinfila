@@ -358,6 +358,27 @@ cambios" guarda todo).
 `promo_porcentaje`. Verificado contra la base: `local_abierto`,
 `promos_vigentes` y `previsualizar_pedido` devuelven bien.
 
+## Estado actual — KDS con vista Caja / Barra / Cocina (2026-09-08)
+
+Rediseño de `Local.vue` (sin migración). Antes: pestañas Todos/Barra/Cocina
+y un pedido `pendiente` ya se veía en Barra/Cocina.
+
+- **Caja** (mostrador, ex "Todos"): ve todo el ciclo con todos los datos
+  (cliente, tel, retiro/delivery + dirección, método de pago, si avisó la
+  transferencia). El pedido entra `pendiente` y **solo se ve en Caja**.
+  Botón contextual: "Confirmar pago e iniciar" (transferencia) /
+  "Aceptar e iniciar" (efectivo) → pasa a `en_preparacion` y recién ahí se
+  dispara a Barra/Cocina. También hace "Listo para entregar" → `avisado` →
+  "Marcar entregado", y el link de WhatsApp.
+- **Barra / Cocina**: solo pedidos `en_preparacion` que les tocan y que no
+  marcaron listos. Tarjeta mínima: **#número, nombre del cliente, ítems de
+  esa estación**. Sin pago, sin tipo de entrega, sin total. Un botón
+  "Pedido listo".
+- El gate de confirmación de pago = la transición `pendiente →
+  en_preparacion`, que ahora solo se dispara desde Caja (no hizo falta
+  columna nueva). Si entra MP en el futuro, el webhook puede hacer esa
+  transición solo.
+
 ## Patrón de UI recurrente
 
 "**Filtrar + multiseleccionar + aplicar**" aparece en 3 lugares: editor de
