@@ -416,7 +416,7 @@ async function quitarItemDeCombo(item, combo) {
         v-model="nuevaCategoriaNombre"
         type="text"
         placeholder="Nombre de la nueva categoría…"
-        class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+        class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
       />
       <button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
         + Categoría
@@ -433,7 +433,7 @@ async function quitarItemDeCombo(item, combo) {
             @keyup.enter="guardarNombreCategoria(cat)"
           />
           <div class="flex gap-3 text-sm">
-            <button type="button" @click="guardarNombreCategoria(cat)" class="font-medium text-indigo-600">Guardar</button>
+            <button type="button" @click="guardarNombreCategoria(cat)" class="font-medium text-brand-600">Guardar</button>
             <button type="button" @click="categoriaEditandoId = null" class="text-slate-400">Cancelar</button>
           </div>
         </template>
@@ -476,7 +476,7 @@ async function quitarItemDeCombo(item, combo) {
               role="switch"
               :aria-checked="p.disponible"
               @click="toggleDisponible(p)"
-              :class="['relative h-5 w-9 rounded-full transition', p.disponible ? 'bg-indigo-500' : 'bg-slate-300']"
+              :class="['relative h-5 w-9 rounded-full transition', p.disponible ? 'bg-brand-500' : 'bg-slate-300']"
               title="Disponible"
             >
               <span
@@ -499,7 +499,7 @@ async function quitarItemDeCombo(item, combo) {
         v-if="mostrarFormProducto !== cat.id"
         type="button"
         @click="abrirFormNuevoProducto(cat.id)"
-        class="mt-2 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+        class="mt-2 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600"
       >
         + Agregar producto
       </button>
@@ -607,7 +607,7 @@ async function quitarItemDeCombo(item, combo) {
         v-if="mostrarFormCombo === null"
         type="button"
         @click="abrirFormNuevoCombo"
-        class="mt-3 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+        class="mt-3 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600"
       >
         + Nuevo combo
       </button>
@@ -710,7 +710,7 @@ async function quitarItemDeCombo(item, combo) {
                 role="switch"
                 :aria-checked="combo.disponible"
                 @click="toggleComboDisponible(combo)"
-                :class="['relative h-5 w-9 rounded-full transition', combo.disponible ? 'bg-indigo-500' : 'bg-slate-300']"
+                :class="['relative h-5 w-9 rounded-full transition', combo.disponible ? 'bg-brand-500' : 'bg-slate-300']"
                 title="Disponible"
               >
                 <span
@@ -753,7 +753,7 @@ async function quitarItemDeCombo(item, combo) {
 
           <p v-if="combo.combo_items.length && precioSugeridoActual(combo) !== combo.precio" class="mt-2 text-xs text-slate-500">
             Suma de los productos: <span class="line-through">${{ precioSugeridoActual(combo) }}</span>
-            <button type="button" @click="usarPrecioSugerido(combo)" class="ml-1 font-medium text-indigo-600 hover:text-indigo-800">
+            <button type="button" @click="usarPrecioSugerido(combo)" class="ml-1 font-medium text-brand-600 hover:text-brand-700">
               usar este precio
             </button>
           </p>

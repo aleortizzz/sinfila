@@ -1,6 +1,7 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useCartStore } from '../stores/cart'
+import { pesos } from '../lib/formato'
 
 const props = defineProps({ producto: { type: Object, required: true } })
 const cart = useCartStore()
@@ -28,6 +29,9 @@ function opcionesElegidas() {
   })
 }
 
+// Feedback visual: el botón "+" muestra un ✓ un instante al agregar.
+const agregado = ref(false)
+let t = null
 function agregar() {
   cart.agregar({
     tipo: 'producto',
@@ -37,45 +41,71 @@ function agregar() {
     estacion: props.producto.estacion,
     opciones: opcionesElegidas(),
   })
+  agregado.value = true
+  clearTimeout(t)
+  t = setTimeout(() => (agregado.value = false), 900)
 }
 </script>
 
 <template>
-  <li class="px-4 py-3">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <p class="font-medium">{{ producto.nombre }}</p>
-        <p v-if="producto.descripcion" class="text-sm text-slate-500">{{ producto.descripcion }}</p>
+  <article class="card flex flex-col overflow-hidden">
+    <div class="aspect-4/3 w-full overflow-hidden bg-slate-100">
+      <img
+        v-if="producto.foto_url"
+        :src="producto.foto_url"
+        :alt="producto.nombre"
+        class="h-full w-full object-cover"
+      />
+      <div v-else class="flex h-full w-full items-center justify-center bg-linear-to-br from-brand-100 to-sand-200">
+        <svg viewBox="0 0 24 24" fill="none" class="h-10 w-10 text-brand-300">
+          <path
+            d="M6 3h12l-1.2 16.2A2 2 0 0 1 14.8 21H9.2a2 2 0 0 1-2-1.8L6 3Z"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linejoin="round"
+          />
+          <path d="M6.6 9h10.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+        </svg>
       </div>
-      <span class="whitespace-nowrap font-semibold">${{ producto.precio }}</span>
     </div>
 
-    <div v-for="g in producto.grupos_opciones" :key="g.id" class="mt-2">
-      <p class="text-xs text-slate-500">{{ g.nombre }}</p>
-      <div class="mt-1 flex flex-wrap gap-2">
-        <button
-          v-for="o in g.opciones"
-          :key="o.id"
-          type="button"
-          @click="seleccion[g.id] = o.id"
-          :class="[
-            'rounded-full border px-3 py-1 text-xs transition',
-            seleccion[g.id] === o.id
-              ? 'border-slate-900 bg-slate-900 text-white'
-              : 'border-slate-300 text-slate-600 hover:border-slate-400',
-          ]"
-        >
-          {{ o.nombre }}<span v-if="o.precio_ajuste"> (+${{ o.precio_ajuste }})</span>
+    <div class="flex flex-1 flex-col p-4">
+      <h3 class="font-semibold text-slate-900">{{ producto.nombre }}</h3>
+      <p v-if="producto.descripcion" class="mt-0.5 line-clamp-2 text-sm text-slate-500">
+        {{ producto.descripcion }}
+      </p>
+
+      <div v-for="g in producto.grupos_opciones" :key="g.id" class="mt-3">
+        <p class="text-xs font-medium text-slate-400">{{ g.nombre }}</p>
+        <div class="mt-1.5 flex flex-wrap gap-1.5">
+          <button
+            v-for="o in g.opciones"
+            :key="o.id"
+            type="button"
+            @click="seleccion[g.id] = o.id"
+            :class="[
+              'rounded-full border px-2.5 py-1 text-xs font-medium transition',
+              seleccion[g.id] === o.id
+                ? 'border-slate-900 bg-slate-900 text-white'
+                : 'border-slate-300 text-slate-600 hover:border-slate-400',
+            ]"
+          >
+            {{ o.nombre }}<span v-if="o.precio_ajuste" class="opacity-70"> +{{ pesos(o.precio_ajuste) }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-auto flex items-center justify-between pt-4">
+        <span class="text-lg font-extrabold text-slate-900">{{ pesos(producto.precio) }}</span>
+        <button type="button" @click="agregar" class="add-btn" :aria-label="`Agregar ${producto.nombre}`">
+          <svg v-if="!agregado" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </button>
       </div>
     </div>
-
-    <button
-      type="button"
-      @click="agregar"
-      class="mt-3 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
-    >
-      Agregar
-    </button>
-  </li>
+  </article>
 </template>

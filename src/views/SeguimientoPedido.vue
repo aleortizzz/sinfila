@@ -70,46 +70,64 @@ const mensajePrincipal = computed(() => {
 </script>
 
 <template>
-  <section v-if="cargando" class="text-slate-500">Cargando…</section>
-  <section v-else-if="error" class="text-red-600">{{ error }}</section>
+  <div class="mx-auto max-w-md px-5 py-8">
+    <section v-if="cargando" class="py-24 text-center text-slate-500">Cargando…</section>
+    <section v-else-if="error" class="py-24 text-center text-red-600">{{ error }}</section>
 
-  <section v-else class="mx-auto max-w-sm">
-    <p class="text-sm text-slate-500">{{ pedido.local_nombre }}</p>
-    <h1 class="text-2xl font-bold">Pedido #{{ pedido.numero }}</h1>
-    <p class="mt-2 text-lg font-medium">{{ mensajePrincipal }}</p>
+    <section v-else>
+      <p class="text-sm text-slate-500">{{ pedido.local_nombre }}</p>
+      <h1 class="text-3xl font-extrabold text-slate-900">Pedido #{{ pedido.numero }}</h1>
 
-    <!-- Progreso (solo si no se canceló/rechazó) -->
-    <div v-if="pasoActual !== -1" class="mt-6 flex justify-between">
-      <div v-for="(paso, i) in PASOS" :key="paso.estado" class="flex flex-col items-center text-center">
-        <div
-          :class="[
-            'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold',
-            i <= pasoActual ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400',
-          ]"
-        >
-          {{ i < pasoActual ? '✓' : i + 1 }}
+      <div class="card mt-4 p-5">
+        <p class="text-lg font-semibold text-slate-900">{{ mensajePrincipal }}</p>
+
+        <!-- Progreso (solo si no se canceló/rechazó) -->
+        <div v-if="pasoActual !== -1" class="relative mt-6">
+          <div class="absolute inset-x-0 top-3.5 h-0.5 bg-slate-200" />
+          <div
+            class="absolute left-0 top-3.5 h-0.5 bg-slate-900 transition-all duration-500"
+            :style="{ width: `${(pasoActual / (PASOS.length - 1)) * 100}%` }"
+          />
+          <div class="relative flex justify-between">
+            <div v-for="(paso, i) in PASOS" :key="paso.estado" class="flex flex-col items-center">
+              <div
+                :class="[
+                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold',
+                  i <= pasoActual ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400',
+                ]"
+              >
+                {{ i < pasoActual ? '✓' : i + 1 }}
+              </div>
+              <span class="mt-1.5 w-14 text-center text-[11px] leading-tight text-slate-500">{{ paso.label }}</span>
+            </div>
+          </div>
         </div>
-        <span class="mt-1 w-16 text-[11px] text-slate-500">{{ paso.label }}</span>
       </div>
-    </div>
 
-    <!-- Resumen -->
-    <div class="mt-6 rounded-lg border border-slate-200 bg-white p-4">
-      <ul class="divide-y divide-slate-200 text-sm">
-        <li v-for="(item, i) in pedido.items" :key="i" class="flex justify-between py-2">
-          <span>{{ item.cantidad }}× {{ item.nombre }}</span>
-          <span>${{ item.precio_unitario * item.cantidad }}</span>
-        </li>
-      </ul>
-      <div v-if="pedido.descuento_promos > 0" class="flex justify-between border-t border-slate-200 pt-2 text-sm text-green-600">
-        <span>Descuento (promo)</span><span>-${{ pedido.descuento_promos }}</span>
+      <!-- Resumen -->
+      <div class="card mt-4 p-4">
+        <ul class="divide-y divide-slate-100 text-sm">
+          <li v-for="(item, i) in pedido.items" :key="i" class="flex justify-between py-2">
+            <span>{{ item.cantidad }}× {{ item.nombre }}</span>
+            <span>${{ item.precio_unitario * item.cantidad }}</span>
+          </li>
+        </ul>
+        <div
+          v-if="pedido.descuento_promos > 0"
+          class="flex justify-between border-t border-slate-200 pt-2 text-sm text-green-600"
+        >
+          <span>Descuento (promo)</span><span>-${{ pedido.descuento_promos }}</span>
+        </div>
+        <div
+          v-if="pedido.costo_delivery"
+          class="flex justify-between border-t border-slate-200 pt-2 text-sm text-slate-500"
+        >
+          <span>Envío</span><span>${{ pedido.costo_delivery }}</span>
+        </div>
+        <div class="mt-1 flex justify-between border-t border-slate-200 pt-2 font-bold text-slate-900">
+          <span>Total</span><span>${{ pedido.total }}</span>
+        </div>
       </div>
-      <div v-if="pedido.costo_delivery" class="flex justify-between border-t border-slate-200 pt-2 text-sm text-slate-500">
-        <span>Envío</span><span>${{ pedido.costo_delivery }}</span>
-      </div>
-      <div class="mt-1 flex justify-between border-t border-slate-200 pt-2 font-semibold">
-        <span>Total</span><span>${{ pedido.total }}</span>
-      </div>
-    </div>
-  </section>
+    </section>
+  </div>
 </template>

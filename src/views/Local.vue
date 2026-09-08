@@ -171,138 +171,149 @@ async function salir() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100 p-6">
-  <section v-if="cargando" class="text-slate-500">Cargando…</section>
-  <section v-else-if="error" class="text-red-600">{{ error }}</section>
+  <div class="min-h-screen bg-slate-100">
+    <section v-if="cargando" class="p-6 text-slate-500">Cargando…</section>
+    <section v-else-if="error" class="p-6 text-red-600">{{ error }}</section>
 
-  <section v-else>
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-semibold">{{ local.nombre }} — Pedidos</h1>
-      <div class="flex items-center gap-4 text-sm">
-        <RouterLink :to="`/panel/${route.params.slug}/admin`" class="text-slate-500 underline hover:text-slate-900">
-          Panel admin
-        </RouterLink>
-        <button type="button" @click="salir" class="text-slate-500 underline hover:text-slate-900">
-          Cerrar sesión
-        </button>
+    <section v-else>
+      <header class="border-b border-slate-200 bg-white">
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3">
+          <h1 class="text-lg font-bold text-slate-900">{{ local.nombre }} · Pedidos</h1>
+          <div class="flex items-center gap-4 text-sm">
+            <RouterLink
+              :to="`/panel/${route.params.slug}/admin`"
+              class="font-medium text-slate-500 hover:text-slate-900"
+            >
+              Panel admin
+            </RouterLink>
+            <button type="button" @click="salir" class="font-medium text-slate-500 hover:text-slate-900">
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="mx-auto max-w-6xl p-6">
+        <div class="flex gap-2">
+          <button
+            v-for="op in [['todos', 'Todos'], ['barra', 'Barra'], ['cocina', 'Cocina']]"
+            :key="op[0]"
+            type="button"
+            @click="filtroEstacion = op[0]"
+            :class="['chip', filtroEstacion === op[0] && 'chip-active']"
+          >
+            {{ op[1] }}
+          </button>
+        </div>
+
+        <p v-if="pedidosFiltrados.length === 0" class="mt-10 text-center text-slate-500">
+          No hay pedidos activos.
+        </p>
+
+        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <article
+            v-for="p in pedidosFiltrados"
+            :key="p.id"
+            :class="['rounded-2xl border-2 bg-white p-4 shadow-sm', colorEstado(p.estado)]"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xl font-extrabold text-slate-900">#{{ p.numero }}</span>
+              <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                {{ etiquetaEstado(p) }}
+              </span>
+            </div>
+
+            <p class="mt-2 font-semibold text-slate-900">{{ p.nombre_cliente }}</p>
+            <p class="text-sm text-slate-500">{{ p.telefono_cliente }}</p>
+            <p class="mt-1 text-sm text-slate-500">
+              {{ p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏠 Retiro' }}
+              <span v-if="p.tipo_entrega === 'delivery'">— {{ p.direccion_calle }} {{ p.direccion_numero }}, {{ p.direccion_barrio }}</span>
+            </p>
+            <p class="text-sm text-slate-500">
+              {{ p.metodo_pago === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia' }}
+              <span v-if="p.metodo_pago === 'transferencia'">
+                {{ p.transferencia_avisada ? '(avisó que ya transfirió)' : '(todavía no avisó)' }}
+              </span>
+            </p>
+
+            <ul class="mt-3 space-y-1 border-t border-slate-200/70 pt-2 text-sm">
+              <li v-for="item in itemsVisibles(p)" :key="item.id">
+                <span class="font-medium">{{ item.cantidad }}×</span> {{ item.nombre }}
+                <span v-if="item.opciones_elegidas?.length" class="text-xs text-slate-500">
+                  ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
+                </span>
+                <span class="text-xs text-slate-400">· {{ item.estacion }}</span>
+              </li>
+            </ul>
+
+            <p class="mt-2 text-right font-bold text-slate-900">${{ p.total }}</p>
+
+            <div class="mt-3 flex flex-wrap gap-2">
+              <template v-if="p.estado === 'pendiente'">
+                <button type="button" @click="aceptar(p)" class="btn btn-dark px-3 py-1.5 text-xs">
+                  Iniciar preparación
+                </button>
+                <button
+                  type="button"
+                  @click="rechazar(p)"
+                  class="btn border border-red-300 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                >
+                  Rechazar
+                </button>
+              </template>
+
+              <template v-else-if="p.estado === 'en_preparacion'">
+                <!-- Vista Todos: solo el estado de cada estación (acá no se accionan). -->
+                <template v-if="filtroEstacion === 'todos'">
+                  <span v-if="p.requiere_barra" :class="p.barra_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
+                    {{ p.barra_lista ? '✓ Barra lista' : '⏳ Falta barra' }}
+                  </span>
+                  <span v-if="p.requiere_cocina" :class="p.cocina_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
+                    {{ p.cocina_lista ? '✓ Cocina lista' : '⏳ Falta cocina' }}
+                  </span>
+                </template>
+                <!-- Vista Barra/Cocina: ya está filtrado a lo que falta, un solo botón. -->
+                <button
+                  v-else
+                  type="button"
+                  @click="marcarEstacionLista(p, filtroEstacion)"
+                  class="btn btn-dark px-3 py-1.5 text-xs"
+                >
+                  Pedido listo
+                </button>
+              </template>
+
+              <template v-else-if="p.estado === 'listo'">
+                <button type="button" @click="avisarListo(p)" class="btn btn-dark px-3 py-1.5 text-xs">
+                  Listo para entregar
+                </button>
+                <a
+                  :href="linkWhatsapp(p)"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn border border-green-300 px-3 py-1.5 text-xs text-green-700 hover:bg-green-50"
+                >
+                  Avisar por WhatsApp
+                </a>
+              </template>
+
+              <template v-else-if="p.estado === 'avisado'">
+                <button type="button" @click="entregar(p)" class="btn btn-dark px-3 py-1.5 text-xs">
+                  Marcar entregado
+                </button>
+                <a
+                  :href="linkWhatsapp(p)"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn border border-green-300 px-3 py-1.5 text-xs text-green-700 hover:bg-green-50"
+                >
+                  Avisar por WhatsApp
+                </a>
+              </template>
+            </div>
+          </article>
+        </div>
       </div>
-    </div>
-
-    <div class="mt-3 flex gap-2">
-      <button
-        v-for="op in [['todos', 'Todos'], ['barra', 'Barra'], ['cocina', 'Cocina']]"
-        :key="op[0]"
-        type="button"
-        @click="filtroEstacion = op[0]"
-        :class="[
-          'rounded-md border px-3 py-1.5 text-sm',
-          filtroEstacion === op[0] ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600',
-        ]"
-      >
-        {{ op[1] }}
-      </button>
-    </div>
-
-    <p v-if="pedidosFiltrados.length === 0" class="mt-6 text-slate-500">No hay pedidos activos.</p>
-
-    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <article
-        v-for="p in pedidosFiltrados"
-        :key="p.id"
-        :class="['rounded-lg border-2 p-4', colorEstado(p.estado)]"
-      >
-        <div class="flex items-center justify-between">
-          <span class="text-lg font-bold">#{{ p.numero }}</span>
-          <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ etiquetaEstado(p) }}</span>
-        </div>
-
-        <p class="mt-1 font-medium">{{ p.nombre_cliente }}</p>
-        <p class="text-sm text-slate-500">{{ p.telefono_cliente }}</p>
-        <p class="text-sm text-slate-500">
-          {{ p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏠 Retiro' }}
-          <span v-if="p.tipo_entrega === 'delivery'">— {{ p.direccion_calle }} {{ p.direccion_numero }}, {{ p.direccion_barrio }}</span>
-        </p>
-        <p class="text-sm text-slate-500">
-          {{ p.metodo_pago === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia' }}
-          <span v-if="p.metodo_pago === 'transferencia'">
-            {{ p.transferencia_avisada ? '(avisó que ya transfirió)' : '(todavía no avisó)' }}
-          </span>
-        </p>
-
-        <ul class="mt-3 space-y-1 border-t border-slate-200 pt-2 text-sm">
-          <li v-for="item in itemsVisibles(p)" :key="item.id">
-            {{ item.cantidad }}× {{ item.nombre }}
-            <span v-if="item.opciones_elegidas?.length" class="text-xs text-slate-500">
-              ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
-            </span>
-            <span class="text-xs text-slate-400">· {{ item.estacion }}</span>
-          </li>
-        </ul>
-
-        <p class="mt-2 text-right font-semibold">${{ p.total }}</p>
-
-        <!-- Acciones -->
-        <div class="mt-3 flex flex-wrap gap-2">
-          <template v-if="p.estado === 'pendiente'">
-            <button type="button" @click="aceptar(p)" class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">
-              Iniciar preparación
-            </button>
-            <button type="button" @click="rechazar(p)" class="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600">
-              Rechazar
-            </button>
-          </template>
-
-          <template v-else-if="p.estado === 'en_preparacion'">
-            <!-- Vista Todos: solo el estado de cada estación (acá no se accionan). -->
-            <template v-if="filtroEstacion === 'todos'">
-              <span v-if="p.requiere_barra" :class="p.barra_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
-                {{ p.barra_lista ? '✓ Barra lista' : '⏳ Falta barra' }}
-              </span>
-              <span v-if="p.requiere_cocina" :class="p.cocina_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
-                {{ p.cocina_lista ? '✓ Cocina lista' : '⏳ Falta cocina' }}
-              </span>
-            </template>
-            <!-- Vista Barra/Cocina: ya está filtrado a lo que falta, un solo botón. -->
-            <button
-              v-else
-              type="button"
-              @click="marcarEstacionLista(p, filtroEstacion)"
-              class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
-            >
-              Pedido listo
-            </button>
-          </template>
-
-          <template v-else-if="p.estado === 'listo'">
-            <button type="button" @click="avisarListo(p)" class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">
-              Listo para entregar
-            </button>
-            <a
-              :href="linkWhatsapp(p)"
-              target="_blank"
-              rel="noopener"
-              class="rounded-md border border-green-300 px-3 py-1.5 text-sm font-medium text-green-700"
-            >
-              Avisar por WhatsApp
-            </a>
-          </template>
-
-          <template v-else-if="p.estado === 'avisado'">
-            <button type="button" @click="entregar(p)" class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">
-              Marcar entregado
-            </button>
-            <a
-              :href="linkWhatsapp(p)"
-              target="_blank"
-              rel="noopener"
-              class="rounded-md border border-green-300 px-3 py-1.5 text-sm font-medium text-green-700"
-            >
-              Avisar por WhatsApp
-            </a>
-          </template>
-        </div>
-      </article>
-    </div>
-  </section>
+    </section>
   </div>
 </template>

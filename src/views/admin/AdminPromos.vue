@@ -175,7 +175,7 @@ function resumenDias(promo) {
       v-if="!mostrarForm"
       type="button"
       @click="abrirForm"
-      class="mt-4 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+      class="mt-4 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600"
     >
       + Nueva promo
     </button>
@@ -263,7 +263,7 @@ function resumenDias(promo) {
             role="switch"
             :aria-checked="promo.activa"
             @click="toggleActiva(promo)"
-            :class="['relative h-5 w-9 rounded-full transition', promo.activa ? 'bg-indigo-500' : 'bg-slate-300']"
+            :class="['relative h-5 w-9 rounded-full transition', promo.activa ? 'bg-brand-500' : 'bg-slate-300']"
             title="Activa"
           >
             <span :class="['absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition', promo.activa ? 'left-4' : 'left-0.5']" />

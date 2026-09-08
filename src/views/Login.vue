@@ -27,34 +27,34 @@ async function enviar() {
 
 <template>
   <section class="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-  <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-    <h1 class="text-xl font-semibold">Ingresar</h1>
-    <p class="mt-1 text-sm text-slate-500">Acceso para dueños y staff del local.</p>
+    <div class="w-full max-w-sm">
+      <p class="text-center text-sm font-bold uppercase tracking-widest t-brand">SinFila</p>
 
-    <form @submit.prevent="enviar" class="mt-6 space-y-3">
-      <input
-        v-model="email"
-        type="email"
-        placeholder="Email"
-        autocomplete="username"
-        class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-      />
-      <input
-        v-model="password"
-        type="password"
-        placeholder="Contraseña"
-        autocomplete="current-password"
-        class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-      />
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      <button
-        type="submit"
-        :disabled="cargando"
-        class="w-full rounded-md bg-slate-900 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-      >
-        {{ cargando ? 'Entrando…' : 'Entrar' }}
-      </button>
-    </form>
-  </div>
+      <div class="card mt-3 p-6">
+        <h1 class="text-xl font-bold text-slate-900">Ingresar</h1>
+        <p class="mt-1 text-sm text-slate-500">Acceso para dueños y staff del local.</p>
+
+        <form @submit.prevent="enviar" class="mt-6 space-y-3">
+          <input
+            v-model="email"
+            type="email"
+            placeholder="Email"
+            autocomplete="username"
+            class="input"
+          />
+          <input
+            v-model="password"
+            type="password"
+            placeholder="Contraseña"
+            autocomplete="current-password"
+            class="input"
+          />
+          <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+          <button type="submit" :disabled="cargando" class="btn btn-dark w-full">
+            {{ cargando ? 'Entrando…' : 'Entrar' }}
+          </button>
+        </form>
+      </div>
+    </div>
   </section>
 </template>

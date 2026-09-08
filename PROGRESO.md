@@ -196,6 +196,47 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Estado actual — Pasada de diseño visual (2026-09-08)
+
+Primera pasada fuerte de UI sobre todo lo ya construido (a pedido del
+usuario: "que las cosas tengan un orden visual para ir viendo el
+progreso"). Solo markup/estilo, sin tocar lógica.
+
+- **Sistema de diseño** en `src/style.css` (Tailwind v4, CSS-first):
+  tokens `@theme` — fuente **Plus Jakarta Sans** (cargada en `index.html`),
+  escala de color `brand-*` (rojo "apetito" `#f5401f`) y `sand-*` (neutro
+  cálido para el fondo de la carta). Clases de componente reutilizables:
+  `.btn` + `.btn-brand/.btn-dark/.btn-ghost`, `.input`, `.card`, `.label`,
+  `.chip` + `.chip-active`, `.add-btn`, `.t-brand`.
+- **Tono por local**: `--brand` se puede pisar con `local.color_primario`
+  vía `:style` en el wrapper de la carta/checkout/seguimiento; las clases
+  de componente leen `var(--brand)`, las utilidades `brand-*` son el
+  fallback fijo.
+- **Carta** (`Carta.vue` + `ProductoCard`/`ComboCard`/`CarritoResumen`):
+  hero con banner (`banner_url` o gradiente de marca) + logo + nombre,
+  **nav de categorías pegajosa** con scroll-spy (IntersectionObserver),
+  grilla de tarjetas con foto (o placeholder), chips de opciones, precio y
+  botón "+" circular con feedback ✓. Combos con badge y "Ahorrás $X".
+  Carrito = barra flotante colapsable (pill con total → panel con detalle
+  y CTA al pago).
+- **Checkout / Seguimiento**: secciones en `.card`, inputs y chips
+  unificados, tracker de progreso con línea de avance, pantalla de
+  confirmación con ícono.
+- **Admin**: `AdminLayout` con sidebar (logo, "Ver carta", logout abajo) y
+  contenedor `max-w-5xl`; `AdminHome` = dashboard con tarjetas de stats
+  (placeholders "Pronto") + accesos rápidos. `AdminMenu`/`AdminPromos`:
+  acento `indigo` → `brand` para unificar (lógica intacta).
+- **KDS / Login / Home**: repintados con el mismo sistema.
+- **Formato de moneda**: `src/lib/formato.js` → `pesos()` (`$12.000`),
+  aplicado en las tarjetas y el carrito. Pendiente: extenderlo a checkout,
+  seguimiento y admin.
+- `npm run build` OK. Probado en el navegador (headless) a 1280 / 768 px.
+
+Pendiente de diseño (anotado, para próximas pasadas): fotos reales de
+productos, formato de moneda en el resto de las pantallas, y que el dueño
+edite branding (logo/color/banner) desde el admin — eso va con "Config del
+local" (Hito 8b).
+
 ## Patrón de UI recurrente
 
 "**Filtrar + multiseleccionar + aplicar**" aparece en 3 lugares: editor de

@@ -1,18 +1,20 @@
 <script setup>
-// Placeholder. Acá va a vivir la landing/marketing de SinFila y el signup
-// de un local nuevo (Hito 8). Por ahora solo confirma que la app levanta en
-// la raíz sin un slug de local.
+// Placeholder. Acá va a vivir la landing/marketing de SinFila y el signup de
+// un local nuevo (Hito 8). Por ahora una portada simple sobre el fondo cálido.
 </script>
 
 <template>
-  <section>
-    <h1 class="text-xl font-semibold">SinFila</h1>
-    <p class="mt-2 text-slate-500">
-      No hagas fila: escaneá, elegí y esperá tu pedido. (Landing pendiente.)
+  <section class="mx-auto max-w-lg px-5 py-20 text-center">
+    <p class="text-sm font-bold uppercase tracking-widest t-brand">SinFila</p>
+    <h1 class="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
+      No hagas fila: escaneá, elegí y esperá tu pedido.
+    </h1>
+    <p class="mt-4 text-slate-500">
+      Plataforma de pedidos para bares y kioscos. La landing y el alta de
+      locales llegan en el próximo hito.
     </p>
-    <p class="mt-4 text-sm text-slate-500">
-      Local de prueba:
-      <RouterLink to="/bar-de-prueba" class="text-slate-900 underline">/bar-de-prueba</RouterLink>
-    </p>
+    <RouterLink to="/bar-de-prueba" class="btn btn-brand mt-7">
+      Ver un local de ejemplo →
+    </RouterLink>
   </section>
 </template>

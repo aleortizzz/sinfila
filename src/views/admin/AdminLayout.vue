@@ -53,14 +53,19 @@ async function salir() {
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-slate-50">
-    <aside class="flex w-60 shrink-0 flex-col bg-slate-900 px-3 py-4">
-      <div class="px-2">
-        <p class="text-[11px] font-semibold uppercase tracking-widest text-indigo-400">SinFila admin</p>
-        <p class="mt-1 truncate text-lg font-semibold text-white">{{ local?.nombre ?? '…' }}</p>
+  <div class="flex min-h-screen bg-slate-50 text-slate-900">
+    <aside class="flex w-60 shrink-0 flex-col bg-slate-900 px-3 py-5">
+      <div class="flex items-center gap-2.5 px-2">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-sm font-extrabold text-white">
+          S
+        </div>
+        <div class="min-w-0">
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">SinFila</p>
+          <p class="truncate text-sm font-semibold text-white">{{ local?.nombre ?? '…' }}</p>
+        </div>
       </div>
 
-      <nav class="mt-6 flex flex-col gap-1">
+      <nav class="mt-7 flex flex-col gap-1">
         <RouterLink
           v-for="item in NAV"
           :key="item.label"
@@ -74,8 +79,8 @@ async function salir() {
             :class="[
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition',
               (item.exact ? isExactActive : isActive)
-                ? 'bg-indigo-500/15 font-medium text-indigo-300'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
+                ? 'bg-white/10 font-medium text-white'
+                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100',
             ]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-5 w-5 shrink-0">
@@ -86,20 +91,38 @@ async function salir() {
         </RouterLink>
       </nav>
 
-      <button
-        type="button"
-        @click="salir"
-        class="mt-auto flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-800 hover:text-slate-200"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-5 w-5 shrink-0">
-          <path
-            d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M18 12H8.25m9.75 0l-3-3m3 3l-3 3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-        Cerrar sesión
-      </button>
+      <div class="mt-auto flex flex-col gap-1">
+        <a
+          :href="`/${route.params.slug}`"
+          target="_blank"
+          rel="noopener"
+          class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-slate-100"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-5 w-5 shrink-0">
+            <path
+              d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-7.5 3L21 3m0 0h-5.25M21 3v5.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          Ver carta
+        </a>
+
+        <button
+          type="button"
+          @click="salir"
+          class="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-5 w-5 shrink-0">
+            <path
+              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M18 12H8.25m9.75 0l-3-3m3 3l-3 3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          Cerrar sesión
+        </button>
+      </div>
     </aside>
 
     <div class="flex-1">
@@ -108,9 +131,11 @@ async function salir() {
       </header>
 
       <main class="p-6">
-        <RouterView v-slot="{ Component }">
-          <component :is="Component" :local="local" />
-        </RouterView>
+        <div class="mx-auto max-w-5xl">
+          <RouterView v-slot="{ Component }">
+            <component :is="Component" :local="local" />
+          </RouterView>
+        </div>
       </main>
     </div>
   </div>

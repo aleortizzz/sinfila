@@ -166,199 +166,217 @@ async function confirmar() {
 </script>
 
 <template>
-  <section v-if="cargando" class="text-slate-500">Cargando…</section>
+  <div
+    class="mx-auto max-w-xl px-5 py-6"
+    :style="local && local.color_primario ? { '--brand': local.color_primario } : null"
+  >
+    <section v-if="cargando" class="py-24 text-center text-slate-500">Cargando…</section>
+    <section v-else-if="error" class="py-24 text-center text-red-600">{{ error }}</section>
 
-  <section v-else-if="error" class="text-red-600">{{ error }}</section>
-
-  <!-- Confirmación -->
-  <section v-else-if="pedidoConfirmado" class="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-    <p class="text-sm text-green-700">¡Listo, {{ nombreCliente }}!</p>
-    <p class="mt-1 text-3xl font-bold text-green-800">Pedido #{{ pedidoConfirmado.numero }}</p>
-    <p class="mt-2 text-sm text-green-700">Te vamos a avisar cuando esté listo.</p>
-    <RouterLink
-      :to="`/pedido/${pedidoConfirmado.id}`"
-      class="mt-4 block w-full rounded-md bg-slate-900 py-2.5 text-center text-sm font-semibold text-white hover:bg-slate-700"
-    >
-      Seguir mi pedido
-    </RouterLink>
-    <RouterLink :to="`/${route.params.slug}`" class="mt-3 inline-block text-sm font-medium text-slate-700 underline">
-      Volver a la carta
-    </RouterLink>
-  </section>
-
-  <!-- Formulario -->
-  <section v-else class="pb-8">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-semibold">Confirmá tu pedido</h1>
-      <RouterLink :to="`/${route.params.slug}`" class="text-sm font-medium text-slate-500 underline hover:text-slate-900">
-        ← Seguir pidiendo
+    <!-- Confirmación -->
+    <section v-else-if="pedidoConfirmado" class="card mt-6 p-8 text-center">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+        <svg viewBox="0 0 24 24" class="h-7 w-7 text-green-600" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <p class="mt-3 text-sm text-slate-500">¡Listo, {{ nombreCliente }}!</p>
+      <p class="mt-1 text-4xl font-extrabold text-slate-900">Pedido #{{ pedidoConfirmado.numero }}</p>
+      <p class="mt-2 text-sm text-slate-500">Te avisamos cuando esté listo.</p>
+      <RouterLink :to="`/pedido/${pedidoConfirmado.id}`" class="btn btn-brand mt-6 w-full">
+        Seguir mi pedido
       </RouterLink>
-    </div>
+      <RouterLink
+        :to="`/${route.params.slug}`"
+        class="mt-3 inline-block text-sm font-medium text-slate-500 underline"
+      >
+        Volver a la carta
+      </RouterLink>
+    </section>
 
-    <!-- Resumen -->
-    <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-      <ul class="divide-y divide-slate-200 text-sm">
-        <li v-for="item in cart.items" :key="item.id" class="flex items-center justify-between gap-2 py-2">
-          <div class="min-w-0">
-            <p class="truncate">{{ item.nombre }}</p>
-            <p v-if="item.opciones.length" class="truncate text-xs text-slate-500">
-              {{ item.opciones.map((o) => o.opcionNombre).join(', ') }}
-            </p>
-          </div>
-          <div class="flex shrink-0 items-center gap-3">
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                @click="cart.cambiarCantidad(item.id, item.cantidad - 1)"
-                class="h-6 w-6 rounded border border-slate-300 text-slate-600 hover:bg-slate-100"
-              >
-                −
-              </button>
-              <span class="w-4 text-center">{{ item.cantidad }}</span>
-              <button
-                type="button"
-                @click="cart.cambiarCantidad(item.id, item.cantidad + 1)"
-                class="h-6 w-6 rounded border border-slate-300 text-slate-600 hover:bg-slate-100"
-              >
-                +
-              </button>
+    <!-- Formulario -->
+    <section v-else>
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-slate-900">Confirmá tu pedido</h1>
+        <RouterLink
+          :to="`/${route.params.slug}`"
+          class="text-sm font-medium text-slate-500 underline hover:text-slate-900"
+        >
+          ← Seguir pidiendo
+        </RouterLink>
+      </div>
+
+      <!-- Resumen -->
+      <div class="card mt-4 p-4">
+        <ul class="divide-y divide-slate-100 text-sm">
+          <li
+            v-for="item in cart.items"
+            :key="item.id"
+            class="flex items-center justify-between gap-2 py-2.5"
+          >
+            <div class="min-w-0">
+              <p class="truncate font-medium text-slate-900">{{ item.nombre }}</p>
+              <p v-if="item.opciones.length" class="truncate text-xs text-slate-500">
+                {{ item.opciones.map((o) => o.opcionNombre).join(', ') }}
+              </p>
             </div>
-            <span class="w-16 text-right">${{ cart.precioUnitario(item) * item.cantidad }}</span>
-            <button type="button" @click="cart.quitar(item.id)" class="text-slate-400 hover:text-red-600">✕</button>
+            <div class="flex shrink-0 items-center gap-3">
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  @click="cart.cambiarCantidad(item.id, item.cantidad - 1)"
+                  class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:bg-slate-100"
+                >
+                  −
+                </button>
+                <span class="w-4 text-center">{{ item.cantidad }}</span>
+                <button
+                  type="button"
+                  @click="cart.cambiarCantidad(item.id, item.cantidad + 1)"
+                  class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:bg-slate-100"
+                >
+                  +
+                </button>
+              </div>
+              <span class="w-16 text-right font-medium">${{ cart.precioUnitario(item) * item.cantidad }}</span>
+              <button type="button" @click="cart.quitar(item.id)" class="text-slate-300 hover:text-brand-600">✕</button>
+            </div>
+          </li>
+        </ul>
+        <div class="mt-2 space-y-1 border-t border-slate-200 pt-2 text-sm">
+          <div class="flex justify-between text-slate-500"><span>Subtotal</span><span>${{ cart.subtotal }}</span></div>
+          <div v-if="tipoEntrega === 'delivery'" class="flex justify-between text-slate-500">
+            <span>Envío</span><span>${{ costoEnvio }}</span>
           </div>
-        </li>
-      </ul>
-      <div class="flex justify-between border-t border-slate-200 pt-2 text-sm text-slate-500">
-        <span>Subtotal</span><span>${{ cart.subtotal }}</span>
-      </div>
-      <div v-if="tipoEntrega === 'delivery'" class="flex justify-between text-sm text-slate-500">
-        <span>Envío</span><span>${{ costoEnvio }}</span>
-      </div>
-      <div class="mt-1 flex justify-between border-t border-slate-200 pt-2 font-semibold">
-        <span>Total</span><span>${{ total }}</span>
-      </div>
-    </div>
-
-    <!-- Datos del cliente -->
-    <div ref="datosRef" class="mt-6 space-y-1">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Tus datos</h2>
-      <div class="space-y-1">
-        <input
-          v-model="nombreCliente"
-          type="text"
-          placeholder="Nombre"
-          :class="['w-full rounded-md border px-3 py-2 text-sm', errorNombre ? 'border-red-500' : 'border-slate-300']"
-        />
-        <p v-if="errorNombre" class="text-xs text-red-600">Campo obligatorio</p>
-      </div>
-      <div class="space-y-1">
-        <input
-          v-model="telefonoCliente"
-          type="tel"
-          placeholder="Teléfono"
-          :class="['w-full rounded-md border px-3 py-2 text-sm', errorTelefono ? 'border-red-500' : 'border-slate-300']"
-        />
-        <p v-if="errorTelefono" class="text-xs text-red-600">Campo obligatorio</p>
-      </div>
-    </div>
-
-    <!-- Entrega -->
-    <div ref="entregaRef" class="mt-6">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Entrega</h2>
-      <div class="mt-2 flex gap-2">
-        <button
-          v-if="local.acepta_retiro"
-          type="button"
-          @click="tipoEntrega = 'retiro'"
-          :class="['rounded-md border px-3 py-1.5 text-sm', tipoEntrega === 'retiro' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
-        >
-          Retiro en el local
-        </button>
-        <button
-          v-if="local.acepta_delivery"
-          type="button"
-          @click="tipoEntrega = 'delivery'"
-          :class="['rounded-md border px-3 py-1.5 text-sm', tipoEntrega === 'delivery' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
-        >
-          Delivery
-        </button>
-      </div>
-
-      <div v-if="tipoEntrega === 'delivery'" class="mt-3 space-y-2">
-        <select
-          v-model="direccion.barrio"
-          :class="['w-full rounded-md border px-3 py-2 text-sm', errorDireccion && !direccion.barrio ? 'border-red-500' : 'border-slate-300']"
-        >
-          <option value="" disabled>Elegí tu barrio…</option>
-          <option v-for="z in zonas" :key="z.barrio" :value="z.barrio">{{ z.barrio }}</option>
-        </select>
-        <div class="flex gap-2">
-          <input
-            v-model="direccion.calle"
-            type="text"
-            placeholder="Calle"
-            :class="['w-2/3 rounded-md border px-3 py-2 text-sm', errorDireccion && !direccion.calle ? 'border-red-500' : 'border-slate-300']"
-          />
-          <input
-            v-model="direccion.numero"
-            type="text"
-            placeholder="Número"
-            :class="['w-1/3 rounded-md border px-3 py-2 text-sm', errorDireccion && !direccion.numero ? 'border-red-500' : 'border-slate-300']"
-          />
+          <div class="flex justify-between pt-1 text-base font-bold text-slate-900">
+            <span>Total</span><span>${{ total }}</span>
+          </div>
         </div>
-        <p v-if="errorDireccion" class="text-xs text-red-600">Completá barrio, calle y número.</p>
-        <input v-model="direccion.pisoDepto" type="text" placeholder="Piso / depto (opcional)" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        <input v-model="direccion.referencia" type="text" placeholder="Referencia (opcional)" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-        <p v-if="!cumpleMinimo" class="text-sm text-red-600">
-          El mínimo para delivery es ${{ Number(local.delivery_minimo_compra) }}.
-        </p>
-      </div>
-    </div>
-
-    <!-- Pago -->
-    <div ref="pagoRef" class="mt-6">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Pago</h2>
-      <div class="mt-2 flex gap-2">
-        <button
-          v-if="local.acepta_efectivo"
-          type="button"
-          @click="metodoPago = 'efectivo'"
-          :class="['rounded-md border px-3 py-1.5 text-sm', metodoPago === 'efectivo' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
-        >
-          Efectivo
-        </button>
-        <button
-          v-if="local.acepta_transferencia"
-          type="button"
-          @click="metodoPago = 'transferencia'"
-          :class="['rounded-md border px-3 py-1.5 text-sm', metodoPago === 'transferencia' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 text-slate-600']"
-        >
-          Transferencia
-        </button>
       </div>
 
-      <div v-if="metodoPago === 'transferencia'" class="mt-3 rounded-md bg-slate-50 p-3 text-sm">
-        <p v-if="local.alias_transferencia">Alias: <strong>{{ local.alias_transferencia }}</strong></p>
-        <p v-if="local.cbu_transferencia">CBU: <strong>{{ local.cbu_transferencia }}</strong></p>
-        <label class="mt-2 flex items-center gap-2">
-          <input v-model="transferenciaConfirmada" type="checkbox" />
-          Ya hice la transferencia
-        </label>
-        <p v-if="errorTransferencia" class="mt-1 text-xs text-red-600">
-          Confirmá que ya hiciste la transferencia para continuar.
-        </p>
+      <!-- Datos del cliente -->
+      <div ref="datosRef" class="card mt-4 p-4">
+        <h2 class="label">Tus datos</h2>
+        <div class="mt-3 space-y-2">
+          <div>
+            <input
+              v-model="nombreCliente"
+              type="text"
+              placeholder="Nombre"
+              :class="['input', errorNombre && 'border-red-500']"
+            />
+            <p v-if="errorNombre" class="mt-1 text-xs text-red-600">Campo obligatorio</p>
+          </div>
+          <div>
+            <input
+              v-model="telefonoCliente"
+              type="tel"
+              placeholder="Teléfono"
+              :class="['input', errorTelefono && 'border-red-500']"
+            />
+            <p v-if="errorTelefono" class="mt-1 text-xs text-red-600">Campo obligatorio</p>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <p v-if="errorEnvio" class="mt-4 text-sm text-red-600">{{ errorEnvio }}</p>
+      <!-- Entrega -->
+      <div ref="entregaRef" class="card mt-4 p-4">
+        <h2 class="label">Entrega</h2>
+        <div class="mt-3 flex gap-2">
+          <button
+            v-if="local.acepta_retiro"
+            type="button"
+            @click="tipoEntrega = 'retiro'"
+            :class="['chip', tipoEntrega === 'retiro' && 'chip-active']"
+          >
+            Retiro en el local
+          </button>
+          <button
+            v-if="local.acepta_delivery"
+            type="button"
+            @click="tipoEntrega = 'delivery'"
+            :class="['chip', tipoEntrega === 'delivery' && 'chip-active']"
+          >
+            Delivery
+          </button>
+        </div>
 
-    <button
-      type="button"
-      :disabled="enviando"
-      @click="onConfirmarClick"
-      class="mt-6 w-full rounded-md bg-slate-900 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      {{ enviando ? 'Enviando…' : `Confirmar pedido — $${total}` }}
-    </button>
-  </section>
+        <div v-if="tipoEntrega === 'delivery'" class="mt-3 space-y-2">
+          <select
+            v-model="direccion.barrio"
+            :class="['input', errorDireccion && !direccion.barrio && 'border-red-500']"
+          >
+            <option value="" disabled>Elegí tu barrio…</option>
+            <option v-for="z in zonas" :key="z.barrio" :value="z.barrio">{{ z.barrio }}</option>
+          </select>
+          <div class="flex gap-2">
+            <input
+              v-model="direccion.calle"
+              type="text"
+              placeholder="Calle"
+              :class="['input w-2/3', errorDireccion && !direccion.calle && 'border-red-500']"
+            />
+            <input
+              v-model="direccion.numero"
+              type="text"
+              placeholder="Número"
+              :class="['input w-1/3', errorDireccion && !direccion.numero && 'border-red-500']"
+            />
+          </div>
+          <p v-if="errorDireccion" class="text-xs text-red-600">Completá barrio, calle y número.</p>
+          <input v-model="direccion.pisoDepto" type="text" placeholder="Piso / depto (opcional)" class="input" />
+          <input v-model="direccion.referencia" type="text" placeholder="Referencia (opcional)" class="input" />
+          <p v-if="!cumpleMinimo" class="text-sm text-red-600">
+            El mínimo para delivery es ${{ Number(local.delivery_minimo_compra) }}.
+          </p>
+        </div>
+      </div>
+
+      <!-- Pago -->
+      <div ref="pagoRef" class="card mt-4 p-4">
+        <h2 class="label">Pago</h2>
+        <div class="mt-3 flex gap-2">
+          <button
+            v-if="local.acepta_efectivo"
+            type="button"
+            @click="metodoPago = 'efectivo'"
+            :class="['chip', metodoPago === 'efectivo' && 'chip-active']"
+          >
+            Efectivo
+          </button>
+          <button
+            v-if="local.acepta_transferencia"
+            type="button"
+            @click="metodoPago = 'transferencia'"
+            :class="['chip', metodoPago === 'transferencia' && 'chip-active']"
+          >
+            Transferencia
+          </button>
+        </div>
+
+        <div v-if="metodoPago === 'transferencia'" class="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
+          <p v-if="local.alias_transferencia">Alias: <strong>{{ local.alias_transferencia }}</strong></p>
+          <p v-if="local.cbu_transferencia">CBU: <strong>{{ local.cbu_transferencia }}</strong></p>
+          <label class="mt-2 flex items-center gap-2">
+            <input v-model="transferenciaConfirmada" type="checkbox" />
+            Ya hice la transferencia
+          </label>
+          <p v-if="errorTransferencia" class="mt-1 text-xs text-red-600">
+            Confirmá que ya hiciste la transferencia para continuar.
+          </p>
+        </div>
+      </div>
+
+      <p v-if="errorEnvio" class="mt-4 text-sm text-red-600">{{ errorEnvio }}</p>
+
+      <button
+        type="button"
+        :disabled="enviando"
+        @click="onConfirmarClick"
+        class="btn btn-brand mt-5 w-full py-3.5 text-base"
+      >
+        {{ enviando ? 'Enviando…' : `Confirmar pedido — $${total}` }}
+      </button>
+    </section>
+  </div>
 </template>
