@@ -3,7 +3,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { obtenerLocalPorSlug } from '../lib/locales'
-import { obtenerZonasDelivery, crearPedido } from '../lib/pedidos'
+import { obtenerZonasDelivery, crearPedido, previsualizarPedido } from '../lib/pedidos'
+import { pesos } from '../lib/formato'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +26,42 @@ const enviando = ref(false)
 const errorEnvio = ref(null)
 const pedidoConfirmado = ref(null)
 
+// Ítems del carrito en el formato que esperan crear_pedido / previsualizar_pedido.
+function itemsPayload() {
+  return cart.items.map((i) => ({
+    tipo: i.tipo,
+    ref_id: i.refId,
+    cantidad: i.cantidad,
+    opciones: i.opciones.map((o) => o.opcionId),
+  }))
+}
+
+// Preview del descuento de promo. No cobra nada: corre el mismo cálculo que
+// crear_pedido y devuelve { subtotal, descuento_promos, total }. Si falla
+// (función no desplegada, red caída) se cae al subtotal sin promo.
+const preview = ref(null)
+let previewTimer = null
+async function cargarPreview() {
+  if (cart.items.length === 0) {
+    preview.value = null
+    return
+  }
+  try {
+    preview.value = await previsualizarPedido({
+      local_slug: route.params.slug,
+      items: itemsPayload(),
+    })
+  } catch {
+    preview.value = null
+  }
+}
+
+const descuentoPromos = computed(() => Number(preview.value?.descuento_promos ?? 0))
+const subtotalConDescuento = computed(() => {
+  const t = Number(preview.value?.total)
+  return Number.isFinite(t) ? t : cart.subtotal
+})
+
 onMounted(async () => {
   // Sin carrito (o de otro local) acá no hay nada que hacer.
   if (cart.items.length === 0 || cart.localSlug !== route.params.slug) {
@@ -42,12 +79,24 @@ onMounted(async () => {
     if (local.value.acepta_delivery) {
       zonas.value = await obtenerZonasDelivery(local.value.id)
     }
+    cargarPreview()
   } catch (e) {
     error.value = e.message
   } finally {
     cargando.value = false
   }
 })
+
+// El carrito se puede tocar desde el mismo checkout (+/− en el resumen):
+// recalculamos el descuento, con un respiro para no spamear la función.
+watch(
+  () => cart.items,
+  () => {
+    clearTimeout(previewTimer)
+    previewTimer = setTimeout(cargarPreview, 250)
+  },
+  { deep: true },
+)
 
 // Si el cliente vacía el carrito desde acá mismo (sacando todo con el "−"),
 // no tiene sentido seguir en el checkout. No aplica si ya se confirmó el
@@ -73,7 +122,7 @@ const costoEnvio = computed(() => {
   )
 })
 
-const total = computed(() => cart.subtotal + costoEnvio.value)
+const total = computed(() => subtotalConDescuento.value + costoEnvio.value)
 
 const cumpleMinimo = computed(
   () => tipoEntrega.value !== 'delivery' || cart.subtotal >= Number(local.value?.delivery_minimo_compra ?? 0),
@@ -148,12 +197,7 @@ async function confirmar() {
       nombre_cliente: nombreCliente.value.trim(),
       telefono_cliente: telefonoCliente.value.trim(),
       direccion: direccionPayload,
-      items: cart.items.map((i) => ({
-        tipo: i.tipo,
-        ref_id: i.refId,
-        cantidad: i.cantidad,
-        opciones: i.opciones.map((o) => o.opcionId),
-      })),
+      items: itemsPayload(),
     })
     pedidoConfirmado.value = resultado
     cart.vaciar()
@@ -238,18 +282,21 @@ async function confirmar() {
                   +
                 </button>
               </div>
-              <span class="w-16 text-right font-medium">${{ cart.precioUnitario(item) * item.cantidad }}</span>
+              <span class="w-16 text-right font-medium">{{ pesos(cart.precioUnitario(item) * item.cantidad) }}</span>
               <button type="button" @click="cart.quitar(item.id)" class="text-slate-300 hover:text-brand-600">✕</button>
             </div>
           </li>
         </ul>
         <div class="mt-2 space-y-1 border-t border-slate-200 pt-2 text-sm">
-          <div class="flex justify-between text-slate-500"><span>Subtotal</span><span>${{ cart.subtotal }}</span></div>
+          <div class="flex justify-between text-slate-500"><span>Subtotal</span><span>{{ pesos(cart.subtotal) }}</span></div>
+          <div v-if="descuentoPromos > 0" class="flex justify-between font-medium text-green-600">
+            <span>Descuento (promo)</span><span>-{{ pesos(descuentoPromos) }}</span>
+          </div>
           <div v-if="tipoEntrega === 'delivery'" class="flex justify-between text-slate-500">
-            <span>Envío</span><span>${{ costoEnvio }}</span>
+            <span>Envío</span><span>{{ pesos(costoEnvio) }}</span>
           </div>
           <div class="flex justify-between pt-1 text-base font-bold text-slate-900">
-            <span>Total</span><span>${{ total }}</span>
+            <span>Total</span><span>{{ pesos(total) }}</span>
           </div>
         </div>
       </div>
@@ -327,7 +374,7 @@ async function confirmar() {
           <input v-model="direccion.pisoDepto" type="text" placeholder="Piso / depto (opcional)" class="input" />
           <input v-model="direccion.referencia" type="text" placeholder="Referencia (opcional)" class="input" />
           <p v-if="!cumpleMinimo" class="text-sm text-red-600">
-            El mínimo para delivery es ${{ Number(local.delivery_minimo_compra) }}.
+            El mínimo para delivery es {{ pesos(local.delivery_minimo_compra) }}.
           </p>
         </div>
       </div>
@@ -375,7 +422,7 @@ async function confirmar() {
         @click="onConfirmarClick"
         class="btn btn-brand mt-5 w-full py-3.5 text-base"
       >
-        {{ enviando ? 'Enviando…' : `Confirmar pedido — $${total}` }}
+        {{ enviando ? 'Enviando…' : `Confirmar pedido — ${pesos(total)}` }}
       </button>
     </section>
   </div>

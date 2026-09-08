@@ -10,6 +10,15 @@ export async function crearPedido(payload) {
   return data // { id, numero }
 }
 
+// Mismo cálculo que crear_pedido (precio real + opciones + motor de promos)
+// pero sin insertar nada — el checkout lo usa para mostrar el descuento de
+// promo antes de pagar. Devuelve { subtotal, descuento_promos, total, items }.
+export async function previsualizarPedido(payload) {
+  const { data, error } = await supabase.rpc('previsualizar_pedido', { p_payload: payload })
+  if (error) throw new Error(error.message)
+  return data
+}
+
 // --- Pantalla del local (KDS) ---
 
 const SELECT_PEDIDO_CON_ITEMS = '*, pedido_items(*)'
@@ -19,7 +28,7 @@ export async function obtenerPedidosActivos(localId) {
     .from('pedidos')
     .select(SELECT_PEDIDO_CON_ITEMS)
     .eq('local_id', localId)
-    .in('estado', ['pendiente', 'en_preparacion', 'listo'])
+    .in('estado', ['pendiente', 'en_preparacion', 'listo', 'avisado'])
     .order('numero', { ascending: true })
   if (error) throw error
   return data ?? []
