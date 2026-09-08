@@ -8,6 +8,7 @@ import {
   obtenerHorarios,
   obtenerPromosVigentes,
 } from '../lib/locales'
+import { previsualizarPedido } from '../lib/pedidos'
 import { useCartStore } from '../stores/cart'
 import ProductoCard from '../components/ProductoCard.vue'
 import ComboCard from '../components/ComboCard.vue'
@@ -57,6 +58,39 @@ const promoPorProducto = computed(() => {
 })
 
 const promoDe = (id) => promoPorProducto.value.get(id) ?? null
+
+// Preview del total del carrito con promos aplicadas (mismo cálculo que el
+// checkout / crear_pedido). Se refresca cuando cambia el carrito. Si falla,
+// la barra muestra el subtotal sin promo.
+const previewCarrito = ref(null)
+let previewTimer = null
+async function cargarPreviewCarrito() {
+  if (!cart.items.length || !local.value) {
+    previewCarrito.value = null
+    return
+  }
+  try {
+    previewCarrito.value = await previsualizarPedido({
+      local_slug: route.params.slug,
+      items: cart.items.map((i) => ({
+        tipo: i.tipo,
+        ref_id: i.refId,
+        cantidad: i.cantidad,
+        opciones: i.opciones.map((o) => o.opcionId),
+      })),
+    })
+  } catch {
+    previewCarrito.value = null
+  }
+}
+watch(
+  () => cart.items,
+  () => {
+    clearTimeout(previewTimer)
+    previewTimer = setTimeout(cargarPreviewCarrito, 300)
+  },
+  { deep: true },
+)
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0]
@@ -147,6 +181,7 @@ async function cargar(slug) {
     abierto.value = ab
     horarios.value = hs
     promosVigentes.value = prs
+    cargarPreviewCarrito() // por si el carrito venía guardado de localStorage
     await nextTick()
     observarSecciones()
   } catch (e) {
@@ -196,7 +231,7 @@ onBeforeUnmount(() => observer?.disconnect())
         </div>
 
         <div class="mx-auto max-w-5xl px-5">
-          <div class="card relative z-10 -mt-14 flex items-center gap-4 p-5">
+          <div class="card relative z-10 -mt-14 inline-flex max-w-full items-center gap-4 p-5">
             <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <img v-if="local.logo_url" :src="local.logo_url" alt="" class="h-full w-full object-cover" />
               <span v-else class="text-2xl font-extrabold t-brand">{{ local.nombre.charAt(0) }}</span>
@@ -292,7 +327,11 @@ onBeforeUnmount(() => observer?.disconnect())
         </p>
       </main>
 
-      <CarritoResumen :cerrado="!abierto" />
+      <CarritoResumen
+        :cerrado="!abierto"
+        :total-con-promo="previewCarrito ? previewCarrito.total : null"
+        :descuento="previewCarrito ? previewCarrito.descuento_promos : 0"
+      />
     </template>
   </div>
 </template>

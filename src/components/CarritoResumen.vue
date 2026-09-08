@@ -1,12 +1,24 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { pesos } from '../lib/formato'
 
-defineProps({ cerrado: { type: Boolean, default: false } })
+const props = defineProps({
+  cerrado: { type: Boolean, default: false },
+  // Total con promos aplicadas (viene de previsualizar_pedido). null = sin dato.
+  totalConPromo: { type: [Number, String], default: null },
+  descuento: { type: [Number, String], default: 0 },
+})
 
 const cart = useCartStore()
+
+const hayPromo = computed(
+  () => props.totalConPromo != null && Number(props.totalConPromo) < cart.subtotal,
+)
+const totalMostrado = computed(() =>
+  hayPromo.value ? Number(props.totalConPromo) : cart.subtotal,
+)
 
 // La barra vive siempre abajo. Colapsada = pill con total + cantidad;
 // abierta = panel con el detalle y el CTA al pago.
@@ -68,6 +80,15 @@ const abierto = ref(false)
             </div>
           </li>
         </ul>
+
+        <div v-if="hayPromo" class="mt-2 space-y-1 border-t border-slate-100 pt-2 text-sm">
+          <div class="flex justify-between text-slate-500">
+            <span>Subtotal</span><span>{{ pesos(cart.subtotal) }}</span>
+          </div>
+          <div class="flex justify-between font-medium text-green-600">
+            <span>Descuento (promo)</span><span>-{{ pesos(descuento) }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- Barra colapsada -->
@@ -83,7 +104,10 @@ const abierto = ref(false)
           </span>
           Ver pedido
         </span>
-        <span>{{ pesos(cart.subtotal) }}</span>
+        <span class="flex items-baseline gap-1.5">
+          <span v-if="hayPromo" class="text-sm font-normal text-white/60 line-through">{{ pesos(cart.subtotal) }}</span>
+          <span>{{ pesos(totalMostrado) }}</span>
+        </span>
       </button>
 
       <div v-else-if="cerrado" class="btn btn-brand w-full cursor-not-allowed justify-center px-5 py-3.5 text-base opacity-60 shadow-xl">
@@ -96,7 +120,10 @@ const abierto = ref(false)
         class="btn btn-brand w-full justify-between px-5 py-3.5 text-base shadow-xl"
       >
         <span>Ir al pago</span>
-        <span>{{ pesos(cart.subtotal) }}</span>
+        <span class="flex items-baseline gap-1.5">
+          <span v-if="hayPromo" class="text-sm font-normal text-white/60 line-through">{{ pesos(cart.subtotal) }}</span>
+          <span>{{ pesos(totalMostrado) }}</span>
+        </span>
       </RouterLink>
     </div>
   </div>
