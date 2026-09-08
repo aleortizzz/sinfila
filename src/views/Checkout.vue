@@ -41,26 +41,33 @@ function itemsPayload() {
 // (función no desplegada, red caída) se cae al subtotal sin promo.
 const preview = ref(null)
 let previewTimer = null
+let previewSeq = 0 // descarta respuestas fuera de orden
 async function cargarPreview() {
   if (cart.items.length === 0) {
     preview.value = null
     return
   }
+  const seq = ++previewSeq
   try {
-    preview.value = await previsualizarPedido({
+    const r = await previsualizarPedido({
       local_slug: route.params.slug,
       items: itemsPayload(),
     })
+    if (seq === previewSeq) preview.value = r
   } catch {
-    preview.value = null
+    if (seq === previewSeq) preview.value = null
   }
 }
 
+// Todos los montos salen del mismo preview (nunca cruzados con cart.subtotal),
+// así una respuesta vieja no descuadra el resumen.
+const subtotalMostrado = computed(() =>
+  preview.value ? Number(preview.value.subtotal) : cart.subtotal,
+)
 const descuentoPromos = computed(() => Number(preview.value?.descuento_promos ?? 0))
-const subtotalConDescuento = computed(() => {
-  const t = Number(preview.value?.total)
-  return Number.isFinite(t) ? t : cart.subtotal
-})
+const subtotalConDescuento = computed(() =>
+  preview.value ? Number(preview.value.total) : cart.subtotal,
+)
 
 onMounted(async () => {
   // Sin carrito (o de otro local) acá no hay nada que hacer.
@@ -96,6 +103,8 @@ onMounted(async () => {
 watch(
   () => cart.items,
   () => {
+    preview.value = null
+    previewSeq++ // invalida cualquier respuesta en vuelo
     clearTimeout(previewTimer)
     previewTimer = setTimeout(cargarPreview, 250)
   },
@@ -292,7 +301,7 @@ async function confirmar() {
           </li>
         </ul>
         <div class="mt-2 space-y-1 border-t border-slate-200 pt-2 text-sm">
-          <div class="flex justify-between text-slate-500"><span>Subtotal</span><span>{{ pesos(cart.subtotal) }}</span></div>
+          <div class="flex justify-between text-slate-500"><span>Subtotal</span><span>{{ pesos(subtotalMostrado) }}</span></div>
           <div v-if="descuentoPromos > 0" class="flex justify-between font-medium text-green-600">
             <span>Descuento (promo)</span><span>-{{ pesos(descuentoPromos) }}</span>
           </div>

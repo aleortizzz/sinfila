@@ -64,13 +64,15 @@ const promoDe = (id) => promoPorProducto.value.get(id) ?? null
 // la barra muestra el subtotal sin promo.
 const previewCarrito = ref(null)
 let previewTimer = null
+let previewSeq = 0 // descarta respuestas que llegan fuera de orden
 async function cargarPreviewCarrito() {
   if (!cart.items.length || !local.value) {
     previewCarrito.value = null
     return
   }
+  const seq = ++previewSeq
   try {
-    previewCarrito.value = await previsualizarPedido({
+    const r = await previsualizarPedido({
       local_slug: route.params.slug,
       items: cart.items.map((i) => ({
         tipo: i.tipo,
@@ -79,13 +81,18 @@ async function cargarPreviewCarrito() {
         opciones: i.opciones.map((o) => o.opcionId),
       })),
     })
+    if (seq === previewSeq) previewCarrito.value = r
   } catch {
-    previewCarrito.value = null
+    if (seq === previewSeq) previewCarrito.value = null
   }
 }
 watch(
   () => cart.items,
   () => {
+    // Mientras recalcula, no mostramos números viejos: la barra vuelve al
+    // subtotal simple hasta que llega el preview nuevo.
+    previewCarrito.value = null
+    previewSeq++ // invalida cualquier respuesta en vuelo
     clearTimeout(previewTimer)
     previewTimer = setTimeout(cargarPreviewCarrito, 300)
   },
@@ -327,11 +334,7 @@ onBeforeUnmount(() => observer?.disconnect())
         </p>
       </main>
 
-      <CarritoResumen
-        :cerrado="!abierto"
-        :total-con-promo="previewCarrito ? previewCarrito.total : null"
-        :descuento="previewCarrito ? previewCarrito.descuento_promos : 0"
-      />
+      <CarritoResumen :cerrado="!abierto" :preview="previewCarrito" />
     </template>
   </div>
 </template>
