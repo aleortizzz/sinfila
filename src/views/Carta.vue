@@ -195,25 +195,23 @@ onBeforeUnmount(() => observer?.disconnect())
           <div class="absolute inset-x-0 top-0 h-40 bg-linear-to-t from-transparent to-black/25 sm:h-52" />
         </div>
 
-        <div class="mx-auto -mt-10 max-w-5xl px-5">
-          <div class="flex items-end gap-4">
-            <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-sand-50 bg-white shadow-md">
+        <div class="mx-auto max-w-5xl px-5">
+          <div class="card -mt-4 flex items-center gap-4 p-5">
+            <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               <img v-if="local.logo_url" :src="local.logo_url" alt="" class="h-full w-full object-cover" />
-              <span v-else class="text-2xl font-extrabold t-brand">{{ local.nombre.charAt(0) }}</span>
+              <span v-else class="text-xl font-extrabold t-brand">{{ local.nombre.charAt(0) }}</span>
             </div>
-            <div class="min-w-0 pb-1">
-              <h1 class="truncate text-2xl font-extrabold text-slate-900 sm:text-3xl">{{ local.nombre }}</h1>
-              <div class="flex items-center gap-2">
-                <span
-                  :class="[
-                    'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold',
-                    abierto ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600',
-                  ]"
-                >
-                  <span :class="['h-1.5 w-1.5 rounded-full', abierto ? 'bg-green-500' : 'bg-slate-400']" />
-                  {{ abierto ? 'Abierto ahora' : 'Cerrado ahora' }}
-                </span>
-              </div>
+            <div class="min-w-0">
+              <h1 class="truncate text-xl font-extrabold text-slate-900 sm:text-2xl">{{ local.nombre }}</h1>
+              <span
+                :class="[
+                  'mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold',
+                  abierto ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600',
+                ]"
+              >
+                <span :class="['h-1.5 w-1.5 rounded-full', abierto ? 'bg-green-500' : 'bg-slate-400']" />
+                {{ abierto ? 'Abierto ahora' : 'Cerrado ahora' }}
+              </span>
             </div>
           </div>
         </div>

@@ -40,6 +40,19 @@
     letter-spacing: -0.02em;
   }
 
+  /* Todo lo clickeable con la manito. Tailwind v4 ya no lo pone solo en
+     <button>. Lo deshabilitado, cursor de "no". */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    cursor: pointer;
+  }
+  :disabled {
+    cursor: not-allowed;
+  }
+
   /* Tono de marca efectivo. El wrapper de la carta lo puede sobrescribir con
      el color_primario del local:  :style="{ '--brand': local.color_primario }" */
   :root {
