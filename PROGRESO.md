@@ -324,6 +324,40 @@ Migración `20260908150000_promo_porcentaje.sql`:
 el checkout no muestra el descuento y la carta no muestra abierto/cerrado
 ni promos (degrada sin romper).
 
+## Estado actual — Color del local en la carta + patrón "página de edición" (2026-09-08)
+
+**1. La carta respeta el color del local.** Antes solo `var(--brand)` seguía
+`color_primario`; las utilidades `brand-*` eran el rojo fijo de SinFila.
+Nuevas clases en `style.css` que tiñen con `--brand` vía `color-mix`:
+`.bg-brand`, `.tile-brand`, `.tile-brand-strong`, `.icon-brand-ghost`.
+Aplicadas en `ProductoCard` (badge PROMO, placeholder de foto, chips de
+opción → `chip-active`) y `ComboCard` (placeholder). Lo semántico queda
+como está (verde "abierto", ámbar "cerrado", slate "COMBO").
+
+**2. Promos: página de edición dedicada.** Nuevo patrón para formularios
+largos (a pedido del usuario): en vez de un form inline que estira la
+lista, un botón lleva a una página con todo el detalle y un "Guardar" que
+muestra estado y vuelve a la lista.
+- Rutas: `promos/nueva` y `promos/:promoId/editar` →
+  `AdminPromoForm.vue` (sirve para alta y edición). Ahora SÍ se puede
+  editar una promo (antes había que borrarla y rehacerla).
+- `AdminPromos.vue` quedó como lista limpia: nombre + resumen + switch
+  activa + Editar + Eliminar. Sin form inline.
+- `lib/admin.js`: `obtenerPromoAdmin(id)`. La edición reconcilia
+  `promo_productos` (diff agregar/quitar).
+- **A futuro**: migrar menú (productos/combos/opciones) a este mismo
+  patrón de página de edición.
+
+**3. Configuración del local por pestañas.** `AdminConfig.vue` dejó de ser
+una landing larga: chips **General / Branding / Pagos / Envíos**, se
+muestra una sección por vez (`v-show`, el form sigue montado así "Guardar
+cambios" guarda todo).
+
+`npm run build` OK. Migraciones del turno anterior YA APLICADAS (corrió
+`supabase db push`): `previsualizar_pedido`, `horarios_local`,
+`promo_porcentaje`. Verificado contra la base: `local_abierto`,
+`promos_vigentes` y `previsualizar_pedido` devuelven bien.
+
 ## Patrón de UI recurrente
 
 "**Filtrar + multiseleccionar + aplicar**" aparece en 3 lugares: editor de

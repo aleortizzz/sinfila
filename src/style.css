@@ -109,4 +109,20 @@
   .t-brand {
     color: var(--brand);
   }
+
+  /* Superficies teñidas con el color del local (--brand). Para la carta:
+     badges, placeholders de foto, etc. deben respetar el color del local,
+     no el rojo fijo de SinFila. */
+  .bg-brand {
+    background: var(--brand);
+  }
+  .tile-brand {
+    background: color-mix(in srgb, var(--brand) 12%, #f4ece0);
+  }
+  .tile-brand-strong {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 55%, #ffffff), var(--brand));
+  }
+  .icon-brand-ghost {
+    color: color-mix(in srgb, var(--brand) 42%, transparent);
+  }
 }

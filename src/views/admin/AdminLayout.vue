@@ -48,6 +48,8 @@ const NAV = [
 const tituloPagina = computed(() => {
   if (route.name === 'admin-menu') return 'Menú'
   if (route.name === 'admin-promos') return 'Promos'
+  if (route.name === 'admin-promo-nueva') return 'Nueva promo'
+  if (route.name === 'admin-promo-editar') return 'Editar promo'
   if (route.name === 'admin-config') return 'Configuración'
   if (route.name === 'admin-home') return 'Inicio'
   return ''

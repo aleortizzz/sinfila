@@ -58,7 +58,7 @@ function agregar() {
   <article class="card relative flex flex-col overflow-hidden">
     <span
       v-if="promo"
-      class="absolute left-3 top-3 z-10 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
+      class="bg-brand absolute left-3 top-3 z-10 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow"
     >
       {{ promo.etiqueta || 'Promo' }}
     </span>
@@ -70,8 +70,8 @@ function agregar() {
         :alt="producto.nombre"
         class="h-full w-full object-cover"
       />
-      <div v-else class="flex h-full w-full items-center justify-center bg-linear-to-br from-brand-100 to-sand-200">
-        <svg viewBox="0 0 24 24" fill="none" class="h-10 w-10 text-brand-300">
+      <div v-else class="tile-brand flex h-full w-full items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" class="icon-brand-ghost h-10 w-10">
           <path
             d="M6 3h12l-1.2 16.2A2 2 0 0 1 14.8 21H9.2a2 2 0 0 1-2-1.8L6 3Z"
             stroke="currentColor"
@@ -100,7 +100,7 @@ function agregar() {
             :class="[
               'rounded-full border px-2.5 py-1 text-xs font-medium transition',
               seleccion[g.id] === o.id
-                ? 'border-slate-900 bg-slate-900 text-white'
+                ? 'chip-active'
                 : 'border-slate-300 text-slate-600 hover:border-slate-400',
             ]"
           >

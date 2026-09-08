@@ -41,6 +41,15 @@ const form = reactive({
   delivery_minimo_compra: 0,
 })
 
+// Pestañas: la config es larga, se muestra de a una sección.
+const SECCIONES = [
+  ['general', 'General'],
+  ['branding', 'Branding'],
+  ['pagos', 'Pagos'],
+  ['envios', 'Envíos'],
+]
+const seccion = ref('general')
+
 const horarios = ref([]) // filas de horarios_local (7)
 const horariosOrdenados = computed(() =>
   ORDEN_SEMANA.map((d) => horarios.value.find((h) => h.dia === d)).filter(Boolean),
@@ -219,11 +228,23 @@ async function aplicarAjustePorcentaje() {
   <section v-else class="max-w-3xl space-y-5 pb-24">
     <div>
       <h1 class="text-2xl font-bold text-slate-900">Configuración del local</h1>
-      <p class="text-sm text-slate-500">Datos, horarios, imagen, pago y delivery.</p>
+      <p class="text-sm text-slate-500">Elegí una sección para editarla.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <button
+        v-for="s in SECCIONES"
+        :key="s[0]"
+        type="button"
+        @click="seccion = s[0]"
+        :class="['chip', seccion === s[0] && 'chip-active']"
+      >
+        {{ s[1] }}
+      </button>
     </div>
 
     <!-- Datos -->
-    <div class="card p-5">
+    <div v-show="seccion === 'general'" class="card p-5">
       <h2 class="label">Datos del local</h2>
       <div class="mt-3">
         <label class="mb-1 block text-sm font-medium text-slate-700">Nombre</label>
@@ -232,7 +253,7 @@ async function aplicarAjustePorcentaje() {
     </div>
 
     <!-- Horarios -->
-    <div class="card p-5">
+    <div v-show="seccion === 'general'" class="card p-5">
       <h2 class="label">Horarios de atención</h2>
       <p class="mt-1 text-xs text-slate-400">
         Zona horaria: Argentina. Para un horario que cruza la medianoche, poné
@@ -261,7 +282,7 @@ async function aplicarAjustePorcentaje() {
     </div>
 
     <!-- Branding -->
-    <div class="card p-5">
+    <div v-show="seccion === 'branding'" class="card p-5">
       <h2 class="label">Imagen de la carta</h2>
       <p class="mt-1 text-xs text-slate-400">
         Por ahora se cargan como URL (más adelante: subir el archivo).
@@ -299,7 +320,7 @@ async function aplicarAjustePorcentaje() {
     </div>
 
     <!-- Pago -->
-    <div class="card p-5">
+    <div v-show="seccion === 'pagos'" class="card p-5">
       <h2 class="label">Pago</h2>
       <div class="mt-3 space-y-3">
         <label class="flex items-center justify-between">
@@ -330,7 +351,7 @@ async function aplicarAjustePorcentaje() {
     </div>
 
     <!-- Entrega -->
-    <div class="card p-5">
+    <div v-show="seccion === 'envios'" class="card p-5">
       <h2 class="label">Entrega</h2>
       <div class="mt-3 space-y-3">
         <label class="flex items-center justify-between">

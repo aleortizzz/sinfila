@@ -47,7 +47,7 @@ function agregar() {
         :alt="combo.nombre"
         class="h-full w-full object-cover"
       />
-      <div v-else class="h-full w-full bg-linear-to-br from-brand-200 to-brand-500" />
+      <div v-else class="tile-brand-strong h-full w-full" />
     </div>
 
     <span class="absolute left-3 top-3 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">

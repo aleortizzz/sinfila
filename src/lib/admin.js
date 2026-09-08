@@ -229,6 +229,16 @@ export async function obtenerPromosAdmin(localId) {
   return data ?? []
 }
 
+export async function obtenerPromoAdmin(id) {
+  const { data, error } = await supabase
+    .from('promos')
+    .select('*, promo_productos ( producto_id )')
+    .eq('id', id)
+    .single()
+  if (error) lanzar(error)
+  return data
+}
+
 export async function crearPromo(payload, productoIds) {
   const { data, error } = await supabase.from('promos').insert(payload).select().single()
   if (error) lanzar(error)
