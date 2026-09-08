@@ -274,7 +274,9 @@ tiene los GRANT columna por columna para el dueño y la policy de
   Horarios (general + barra + cocina, vacío hereda el general) / Imagen de
   la carta (logo, banner, color principal con color-picker — alimentan el
   rediseño visual) / Pago (switches + alias/CBU) / Entrega (switches, modo
-  fijo vs por_barrio, costo, mínimo, y lista de zonas con CRUD inmediato).
+  fijo vs por_barrio, costo, mínimo, y lista de zonas con CRUD inmediato +
+  ajuste en masa `+/- N%` sobre el costo de todas las zonas — mismo patrón
+  que va a tener el editor de precios de productos).
   Barra fija abajo con "Guardar cambios". Al guardar hace `Object.assign`
   sobre el `local` compartido, así el sidebar y la carta reflejan el
   cambio sin recargar. Errores de permiso de columna se traducen.
