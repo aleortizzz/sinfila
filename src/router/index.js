@@ -27,6 +27,10 @@ const routes = [
     children: [
       { path: '', name: 'admin-home', component: () => import('../views/admin/AdminHome.vue') },
       { path: 'menu', name: 'admin-menu', component: () => import('../views/admin/AdminMenu.vue') },
+      { path: 'menu/productos/nuevo', name: 'admin-producto-nuevo', component: () => import('../views/admin/AdminProductoForm.vue') },
+      { path: 'menu/productos/:productoId/editar', name: 'admin-producto-editar', component: () => import('../views/admin/AdminProductoForm.vue') },
+      { path: 'menu/combos/nuevo', name: 'admin-combo-nuevo', component: () => import('../views/admin/AdminComboForm.vue') },
+      { path: 'menu/combos/:comboId/editar', name: 'admin-combo-editar', component: () => import('../views/admin/AdminComboForm.vue') },
       { path: 'promos', name: 'admin-promos', component: () => import('../views/admin/AdminPromos.vue') },
       { path: 'promos/nueva', name: 'admin-promo-nueva', component: () => import('../views/admin/AdminPromoForm.vue') },
       { path: 'promos/:promoId/editar', name: 'admin-promo-editar', component: () => import('../views/admin/AdminPromoForm.vue') },

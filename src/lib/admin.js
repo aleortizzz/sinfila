@@ -116,6 +116,23 @@ export async function obtenerProductosAdmin(localId) {
   return data ?? []
 }
 
+export async function obtenerProductoAdmin(id) {
+  const { data, error } = await supabase
+    .from('productos')
+    .select(
+      `*, grupos_opciones ( id, nombre, obligatorio, orden,
+         opciones ( id, nombre, precio_ajuste, orden ) )`,
+    )
+    .eq('id', id)
+    .single()
+  if (error) lanzar(error)
+  // PostgREST no ordena las relaciones anidadas.
+  data.grupos_opciones = [...(data.grupos_opciones ?? [])]
+    .sort((a, b) => a.orden - b.orden)
+    .map((g) => ({ ...g, opciones: [...(g.opciones ?? [])].sort((a, b) => a.orden - b.orden) }))
+  return data
+}
+
 export async function crearProducto(payload) {
   const { data, error } = await supabase.from('productos').insert(payload).select().single()
   if (error) lanzar(error)
@@ -184,6 +201,16 @@ export async function obtenerCombosAdmin(localId) {
     .order('orden')
   if (error) throw error
   return data ?? []
+}
+
+export async function obtenerComboAdmin(id) {
+  const { data, error } = await supabase
+    .from('combos')
+    .select('*, combo_items ( id, cantidad, producto_id, productos ( nombre, precio ) )')
+    .eq('id', id)
+    .single()
+  if (error) lanzar(error)
+  return data
 }
 
 export async function crearCombo(payload) {
