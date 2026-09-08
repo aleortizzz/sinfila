@@ -159,6 +159,15 @@ async function guardarOpcion(op) {
     alert(e.message)
   }
 }
+async function toggleOpcionDisponible(op) {
+  op.disponible = !op.disponible
+  try {
+    await actualizarOpcion(op.id, { disponible: op.disponible })
+  } catch (e) {
+    op.disponible = !op.disponible
+    alert(e.message)
+  }
+}
 async function borrarOpcion(g, op) {
   await eliminarOpcion(op.id)
   g.opciones = g.opciones.filter((x) => x.id !== op.id)
@@ -228,7 +237,11 @@ function volver() {
     <!-- Armado -->
     <div v-if="!esNuevo" class="card p-5">
       <h2 class="label">Armado (grupos de opciones)</h2>
-      <p class="mt-1 text-xs text-slate-400">Ej. "Elegí el relleno" con opciones de elección única. El ajuste de precio puede ser 0.</p>
+      <p class="mt-1 text-xs text-slate-400">
+        Cada grupo es una elección única (ej. "Elegí el relleno"). El +$ de cada opción puede ser 0.
+        <strong>Obligatorio</strong>: el cliente tiene que elegir una; si lo destildás, puede dejar "Ninguna".
+        El switch de cada opción la muestra u oculta en la carta (ej. te quedaste sin stock).
+      </p>
 
       <div v-for="g in grupos" :key="g.id" class="mt-3 rounded-lg border border-slate-200 p-3">
         <div class="flex flex-wrap items-center gap-2">
@@ -244,9 +257,24 @@ function volver() {
 
         <ul class="mt-2 space-y-1">
           <li v-for="op in g.opciones" :key="op.id" class="flex items-center gap-2">
-            <input v-model="op.nombre" type="text" @blur="guardarOpcion(op)" class="input flex-1" />
+            <input
+              v-model="op.nombre"
+              type="text"
+              @blur="guardarOpcion(op)"
+              :class="['input flex-1', !op.disponible && 'text-slate-400 line-through']"
+            />
             <span class="text-xs text-slate-400">+$</span>
             <input v-model="op.precio_ajuste" type="number" step="1" @blur="guardarOpcion(op)" class="input w-24" />
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="op.disponible"
+              @click="toggleOpcionDisponible(op)"
+              :class="['relative h-5 w-9 shrink-0 rounded-full transition', op.disponible ? 'bg-brand-500' : 'bg-slate-300']"
+              title="Disponible"
+            >
+              <span :class="['absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition', op.disponible ? 'left-4' : 'left-0.5']" />
+            </button>
             <button type="button" @click="borrarOpcion(g, op)" class="text-xs text-red-500 hover:text-red-700">✕</button>
           </li>
         </ul>

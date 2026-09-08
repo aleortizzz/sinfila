@@ -358,6 +358,18 @@ cambios" guarda todo).
 `promo_porcentaje`. Verificado contra la base: `local_abierto`,
 `promos_vigentes` y `previsualizar_pedido` devuelven bien.
 
+## Estado actual — "Obligatorio" real + disponibilidad por opción (2026-09-08)
+
+- **`grupos_opciones.obligatorio`** ahora hace algo: obligatorio → primera
+  opción marcada, el cliente elige sí o sí. No obligatorio → aparece un
+  chip "Ninguna" y puede no elegir nada (`ProductoCard`).
+- **`opciones.disponible`** (migración `20260908160000_opciones_disponible`):
+  toggle por opción en `AdminProductoForm`. La carta no muestra las que
+  están en false (y descarta el grupo si se quedó sin ninguna, en
+  `lib/locales.obtenerMenu`). `crear_pedido` recreada con un guard que
+  rechaza el pedido si el cliente mandó una opción no disponible (página
+  vieja). El preview no se tocó (es solo display).
+
 ## Estado actual — Menú con páginas de edición (2026-09-08)
 
 Se aplicó el patrón "lista → página de edición" (el de promos) al menú.

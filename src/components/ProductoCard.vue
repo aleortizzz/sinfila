@@ -12,27 +12,29 @@ const props = defineProps({
 })
 const cart = useCartStore()
 
-// Selección actual por grupo de opciones: { [grupoId]: opcionId }.
-// Pre-seleccionamos la primera opción de cada grupo obligatorio para no
-// tener que bloquear el botón "Agregar" hasta que el cliente elija algo.
+// Selección actual por grupo de opciones: { [grupoId]: opcionId | null }.
+// Grupo obligatorio → primera opción marcada. Grupo opcional → arranca sin
+// elegir (el cliente puede dejar "Ninguna").
 const seleccion = reactive({})
 for (const g of props.producto.grupos_opciones) {
-  if (g.opciones.length) seleccion[g.id] = g.opciones[0].id
+  seleccion[g.id] = g.obligatorio && g.opciones.length ? g.opciones[0].id : null
 }
 
 function opcionesElegidas() {
-  return props.producto.grupos_opciones.map((g) => {
-    const opcion = g.opciones.find((o) => o.id === seleccion[g.id])
-    return {
-      grupoId: g.id,
-      grupoNombre: g.nombre,
-      opcionId: opcion.id,
-      opcionNombre: opcion.nombre,
-      // Los numeric de Postgres llegan como string por PostgREST (para no
-      // perder precisión) — hay que convertirlos antes de sumarlos en JS.
-      precioAjuste: Number(opcion.precio_ajuste),
-    }
-  })
+  return props.producto.grupos_opciones
+    .map((g) => {
+      const opcion = g.opciones.find((o) => o.id === seleccion[g.id])
+      if (!opcion) return null // grupo opcional que quedó en "Ninguna"
+      return {
+        grupoId: g.id,
+        grupoNombre: g.nombre,
+        opcionId: opcion.id,
+        opcionNombre: opcion.nombre,
+        // Los numeric de Postgres llegan como string por PostgREST — convertir.
+        precioAjuste: Number(opcion.precio_ajuste),
+      }
+    })
+    .filter(Boolean)
 }
 
 // Feedback visual: el botón "+" muestra un ✓ un instante al agregar.
@@ -92,6 +94,17 @@ function agregar() {
       <div v-for="g in producto.grupos_opciones" :key="g.id" class="mt-3">
         <p class="text-xs font-medium text-slate-400">{{ g.nombre }}</p>
         <div class="mt-1.5 flex flex-wrap gap-1.5">
+          <button
+            v-if="!g.obligatorio"
+            type="button"
+            @click="seleccion[g.id] = null"
+            :class="[
+              'rounded-full border px-2.5 py-1 text-xs font-medium transition',
+              seleccion[g.id] == null ? 'chip-active' : 'border-slate-300 text-slate-600 hover:border-slate-400',
+            ]"
+          >
+            Ninguna
+          </button>
           <button
             v-for="o in g.opciones"
             :key="o.id"

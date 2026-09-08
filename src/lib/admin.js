@@ -121,7 +121,7 @@ export async function obtenerProductoAdmin(id) {
     .from('productos')
     .select(
       `*, grupos_opciones ( id, nombre, obligatorio, orden,
-         opciones ( id, nombre, precio_ajuste, orden ) )`,
+         opciones ( id, nombre, precio_ajuste, orden, disponible ) )`,
     )
     .eq('id', id)
     .single()

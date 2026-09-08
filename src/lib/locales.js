@@ -69,7 +69,7 @@ export async function obtenerMenu(localId) {
       .select(
         `id, nombre, descripcion, precio, foto_url, categoria_id, estacion, orden,
          grupos_opciones ( id, nombre, obligatorio, orden,
-           opciones ( id, nombre, precio_ajuste, orden ) )`,
+           opciones ( id, nombre, precio_ajuste, orden, disponible ) )`,
       )
       .eq('local_id', localId)
       .eq('disponible', true)
@@ -90,11 +90,19 @@ export async function obtenerMenu(localId) {
 
   // Ordenamos los grupos/opciones anidados (PostgREST no aplica el .order()
   // a las relaciones embebidas, solo a la tabla principal).
+  // Solo opciones disponibles llegan a la carta, y descartamos grupos que
+  // quedaron sin ninguna (ej. se agotaron todas las opciones).
   const productos = (productosRes.data ?? []).map((p) => ({
     ...p,
     grupos_opciones: [...(p.grupos_opciones ?? [])]
       .sort((a, b) => a.orden - b.orden)
-      .map((g) => ({ ...g, opciones: [...(g.opciones ?? [])].sort((a, b) => a.orden - b.orden) })),
+      .map((g) => ({
+        ...g,
+        opciones: [...(g.opciones ?? [])]
+          .filter((o) => o.disponible)
+          .sort((a, b) => a.orden - b.orden),
+      }))
+      .filter((g) => g.opciones.length > 0),
   }))
 
   return {
