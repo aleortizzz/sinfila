@@ -406,14 +406,17 @@ async function aplicarAjustePorcentaje() {
 
           <!-- Zonas -->
           <div class="border-t border-slate-100 pt-3">
-            <p class="text-sm font-medium text-slate-700">
-              Zonas / barrios
-              <span class="font-normal text-slate-400">
-                — {{ form.delivery_costo_modo === 'por_barrio' ? 'el costo de cada barrio se cobra según esta lista' : 'definen a dónde llega el delivery' }}
-              </span>
+            <p class="text-sm font-medium text-slate-700">Zonas / barrios</p>
+            <p class="text-xs text-slate-400">
+              {{ form.delivery_costo_modo === 'por_barrio'
+                ? 'A cada barrio se le cobra el precio que le pongas acá.'
+                : 'Solo definen a dónde llega el delivery. El precio es el costo fijo de arriba, igual para todos.' }}
             </p>
 
-            <div v-if="zonas.length" class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2.5 text-sm">
+            <div
+              v-if="zonas.length && form.delivery_costo_modo === 'por_barrio'"
+              class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2.5 text-sm"
+            >
               <span class="text-slate-600">Ajustar todas:</span>
               <div class="flex overflow-hidden rounded-md border border-slate-300">
                 <button
@@ -446,15 +449,10 @@ async function aplicarAjustePorcentaje() {
             <ul class="mt-2 space-y-2">
               <li v-for="z in zonas" :key="z.id" class="flex items-center gap-2">
                 <input v-model="z.barrio" type="text" @blur="guardarZona(z)" class="input flex-1" />
-                <span class="text-xs text-slate-400">$</span>
-                <input
-                  v-model="z.costo"
-                  type="number"
-                  min="0"
-                  step="1"
-                  @blur="guardarZona(z)"
-                  class="input w-28"
-                />
+                <template v-if="form.delivery_costo_modo === 'por_barrio'">
+                  <span class="text-xs text-slate-400">$</span>
+                  <input v-model="z.costo" type="number" min="0" step="1" @blur="guardarZona(z)" class="input w-28" />
+                </template>
                 <button type="button" @click="quitarZona(z)" class="text-xs font-medium text-red-500 hover:text-red-700">
                   Quitar
                 </button>
@@ -464,8 +462,10 @@ async function aplicarAjustePorcentaje() {
 
             <form @submit.prevent="agregarZona" class="mt-2 flex items-center gap-2">
               <input v-model="nuevaZona.barrio" type="text" placeholder="Nuevo barrio" class="input flex-1" />
-              <span class="text-xs text-slate-400">$</span>
-              <input v-model="nuevaZona.costo" type="number" min="0" step="1" placeholder="Costo" class="input w-28" />
+              <template v-if="form.delivery_costo_modo === 'por_barrio'">
+                <span class="text-xs text-slate-400">$</span>
+                <input v-model="nuevaZona.costo" type="number" min="0" step="1" placeholder="Costo" class="input w-28" />
+              </template>
               <button type="submit" class="btn btn-ghost px-3 py-2 text-xs">+ Zona</button>
             </form>
           </div>
