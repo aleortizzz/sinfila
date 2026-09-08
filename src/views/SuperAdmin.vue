@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import { listarLocalesSuperadmin, activarLocal, registrarPago, cerrarSesion } from '../lib/auth'
+import { listarLocalesSuperadmin, activarLocal, registrarPago, suspenderLocal, cerrarSesion } from '../lib/auth'
 import { pesos } from '../lib/formato'
 
 const router = useRouter()
@@ -59,6 +59,19 @@ async function pago(l) {
   accionando.value = l.local_id
   try {
     await registrarPago(l.local_id, monto)
+    await cargar()
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    accionando.value = null
+  }
+}
+
+async function suspender(l) {
+  if (!confirm(`¿Suspender "${l.local_nombre}"? La carta queda offline y el dueño no puede operar.`)) return
+  accionando.value = l.local_id
+  try {
+    await suspenderLocal(l.local_id)
     await cargar()
   } catch (e) {
     alert(e.message)
@@ -137,7 +150,16 @@ const fecha = (d) => (d ? new Date(d).toLocaleDateString('es-AR') : '—')
                     class="input w-32"
                   />
                   <button type="button" :disabled="accionando === l.local_id" @click="pago(l)" class="btn btn-dark px-3 py-2 text-xs">
-                    Registrar pago
+                    {{ l.estado === 'suspendido' ? 'Registrar pago y reactivar' : 'Registrar pago' }}
+                  </button>
+                  <button
+                    v-if="l.estado !== 'suspendido'"
+                    type="button"
+                    :disabled="accionando === l.local_id"
+                    @click="suspender(l)"
+                    class="btn border border-red-300 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+                  >
+                    Suspender
                   </button>
                 </template>
               </div>

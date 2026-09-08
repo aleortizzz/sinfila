@@ -21,14 +21,20 @@ export async function registrarUsuario(email, password) {
   return data // { user, session } — session es null si el proyecto exige confirmar el mail
 }
 
+export async function reenviarVerificacion(email) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email })
+  if (error) throw new Error(error.message)
+}
+
 // --- Onboarding / super-admin ---
 
 // Crea negocio + local (pendiente_activacion) + rol de dueño para el usuario
-// logueado. Devuelve el slug.
-export async function registrarNegocio(nombreNegocio, nombreLocal, slug) {
+// logueado. Devuelve el slug. En el MVP negocio y local se llaman igual
+// (single-local); el esquema los separa para multi-sucursal a futuro.
+export async function registrarNegocio(nombre, slug) {
   const { data, error } = await supabase.rpc('registrar_negocio', {
-    p_nombre_negocio: nombreNegocio,
-    p_nombre_local: nombreLocal,
+    p_nombre_negocio: nombre,
+    p_nombre_local: nombre,
     p_slug: slug,
   })
   if (error) throw new Error(error.message)
@@ -72,5 +78,10 @@ export async function registrarPago(localId, monto, metodo = 'transferencia') {
     p_monto: Number(monto) || 0,
     p_metodo: metodo,
   })
+  if (error) throw new Error(error.message)
+}
+
+export async function suspenderLocal(localId) {
+  const { error } = await supabase.rpc('suspender_local', { p_local_id: localId })
   if (error) throw new Error(error.message)
 }

@@ -387,6 +387,22 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Ajustes de onboarding (2026-09-08)
+
+- **Registro**: un solo campo "Nombre del local" (negocio y local se
+  llaman igual en el MVP). La URL se arma sola con el nombre; hay un
+  "cambiar" para editarla. Ya no se pide "crear la URL" como paso aparte.
+- **Aviso de verificación**: pantalla con "Confirmá tu correo" + botón
+  "Ir a iniciar sesión" (antes decía "volvé a /registro").
+- **Login**: link "Registrá tu local"; el error de Supabase "Email not
+  confirmed" se traduce a un aviso ámbar con botón "Reenviar el correo"
+  (`auth.resend`); "Invalid login credentials" → "Email o contraseña
+  incorrectos".
+- **Super-admin**: botón **Suspender** manual (migración
+  `20260908180000_suspender_local.sql`, `suspender_local()` guardada por
+  `es_super_admin()`). En un local suspendido, "Registrar pago" dice
+  "Registrar pago y reactivar".
+
 ## Estado actual — "Obligatorio" real + disponibilidad por opción (2026-09-08)
 
 - **`grupos_opciones.obligatorio`** ahora hace algo: obligatorio → primera
