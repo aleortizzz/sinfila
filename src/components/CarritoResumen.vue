@@ -28,7 +28,7 @@ const abierto = ref(false)
   <div v-if="cart.items.length" class="fixed inset-x-0 bottom-0 z-30 px-4 pb-4">
     <div class="mx-auto max-w-lg">
       <!-- Panel expandido -->
-      <div v-if="abierto" class="card mb-2 p-4 shadow-xl">
+      <div v-if="abierto" class="card mb-2 flex max-h-[60dvh] flex-col p-4 shadow-xl">
         <div class="flex items-center justify-between">
           <h2 class="label">Tu pedido</h2>
           <button
@@ -40,11 +40,11 @@ const abierto = ref(false)
           </button>
         </div>
 
-        <ul class="mt-2 max-h-56 divide-y divide-slate-100 overflow-y-auto">
+        <ul class="mt-2 flex-1 divide-y divide-slate-100 overflow-y-auto pr-1">
           <li
             v-for="item in cart.items"
             :key="item.id"
-            class="flex items-center justify-between gap-2 py-2.5 text-sm"
+            class="flex items-center justify-between gap-2 py-2 text-sm"
           >
             <div class="min-w-0">
               <p class="truncate font-medium text-slate-900">{{ item.nombre }}</p>
@@ -73,7 +73,12 @@ const abierto = ref(false)
               <span class="w-16 text-right font-semibold text-slate-900">
                 {{ pesos(cart.precioUnitario(item) * item.cantidad) }}
               </span>
-              <button type="button" @click="cart.quitar(item.id)" class="text-slate-300 hover:text-brand-600">
+              <button
+                type="button"
+                @click="cart.quitar(item.id)"
+                aria-label="Quitar"
+                class="-mr-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+              >
                 ✕
               </button>
             </div>
