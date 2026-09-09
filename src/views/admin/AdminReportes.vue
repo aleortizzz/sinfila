@@ -78,6 +78,12 @@ function delta(actual, anterior) {
   const pct = Math.round(((a - b) / b) * 100)
   return { pct, sube: pct > 0, baja: pct < 0 }
 }
+// Rango del período anterior, para mostrarlo junto al delta ("vs 11/7 al 10/8").
+const previoLabel = computed(() => {
+  const { prevDesde, prevHasta } = rangoPeriodo(periodo.value)
+  if (!prevDesde) return ''
+  return prevDesde === prevHasta ? dm(prevDesde) : `${dm(prevDesde)} al ${dm(prevHasta)}`
+})
 const tarjetas = computed(() => [
   { label: 'Pedidos', valor: resumen.value.pedidos, d: delta(resumen.value.pedidos, previo.value.pedidos) },
   { label: 'Ventas', valor: pesos(resumen.value.ventas), d: delta(resumen.value.ventas, previo.value.ventas) },
@@ -133,6 +139,7 @@ const rangoReal = computed(() => {
             :class="['mt-1 text-xs font-medium', t.d.sube ? 'text-green-600' : t.d.baja ? 'text-red-600' : 'text-slate-400']"
           >
             {{ t.d.sube ? '▲' : t.d.baja ? '▼' : '—' }} {{ Math.abs(t.d.pct) }}% vs período anterior
+            <span v-if="previoLabel" class="font-normal text-slate-400">({{ previoLabel }})</span>
           </p>
           <p v-else class="mt-1 text-xs text-slate-400">sin período anterior para comparar</p>
         </div>
