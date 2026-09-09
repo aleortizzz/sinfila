@@ -40,17 +40,19 @@ const recientes = computed(() => data.value?.recientes ?? [])
 const totalPedidos = computed(() => serie.value.reduce((s, d) => s + d.pedidos, 0))
 const totalVentas = computed(() => serie.value.reduce((s, d) => s + Number(d.ventas), 0))
 
-const maxSerie = computed(() => {
-  const vals = serie.value.map((d) => (metrica.value === 'ventas' ? Number(d.ventas) : d.pedidos))
-  return Math.max(1, ...vals)
+const valorDe = (d) => (metrica.value === 'ventas' ? Number(d.ventas) : d.pedidos)
+const maxSerie = computed(() => Math.max(1, ...serie.value.map(valorDe)))
+const altura = (d) => Math.round((valorDe(d) / maxSerie.value) * 100)
+const etiquetaValor = (v) => (metrica.value === 'ventas' ? pesos(v) : `${Math.round(v)}`)
+const valorDia = (d) => (metrica.value === 'ventas' ? pesos(d.ventas) : `${d.pedidos} pedido(s)`)
+
+// 3 líneas de referencia (0 / mitad / máximo) para que el gráfico tenga escala.
+const gridlines = computed(() => [0, 50, 100].map((p) => ({ pct: p, label: etiquetaValor((maxSerie.value * p) / 100) })))
+
+const diaPico = computed(() => {
+  if (!serie.value.length) return null
+  return serie.value.reduce((a, b) => (valorDe(b) > valorDe(a) ? b : a))
 })
-function altura(d) {
-  const v = metrica.value === 'ventas' ? Number(d.ventas) : d.pedidos
-  return Math.round((v / maxSerie.value) * 100)
-}
-function valorDia(d) {
-  return metrica.value === 'ventas' ? pesos(d.ventas) : `${d.pedidos} pedido(s)`
-}
 
 const dm = (f) => new Date(`${f}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
 const fechaHora = (x) =>
@@ -97,16 +99,37 @@ const ESTADO = {
         </div>
       </div>
 
-      <div class="mt-4 flex h-40 items-end gap-1">
+      <p class="mt-1 text-xs text-slate-400">
+        {{ metrica === 'ventas' ? 'Cuánto facturaste cada día ($).' : 'Cuántos pedidos entraron cada día.' }}
+        <span v-if="diaPico"> · Pico: {{ valorDia(diaPico) }} el {{ dm(diaPico.fecha) }}.</span>
+      </p>
+
+      <!-- Gráfico con escala -->
+      <div class="relative mt-6 h-44">
         <div
-          v-for="d in serie"
-          :key="d.fecha"
-          :title="`${dm(d.fecha)} — ${valorDia(d)}`"
-          class="min-h-[3px] flex-1 rounded-t bg-brand-500/80 transition hover:bg-brand-500"
-          :style="{ height: altura(d) + '%' }"
-        />
+          v-for="g in gridlines"
+          :key="g.pct"
+          class="absolute inset-x-0 border-t border-dashed border-slate-200"
+          :style="{ bottom: g.pct + '%' }"
+        >
+          <span class="absolute -top-2 left-0 bg-white pr-1 text-[10px] text-slate-400">{{ g.label }}</span>
+        </div>
+
+        <div class="absolute inset-0 flex items-end gap-1 pl-12">
+          <div v-for="d in serie" :key="d.fecha" class="group relative flex-1">
+            <div
+              class="min-h-[3px] w-full rounded-t bg-brand-500/80 transition group-hover:bg-brand-500"
+              :style="{ height: altura(d) + '%' }"
+            />
+            <div
+              class="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-1 text-[10px] font-medium text-white group-hover:block"
+            >
+              {{ dm(d.fecha) }} · {{ valorDia(d) }}
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="mt-1.5 flex justify-between text-[11px] text-slate-400">
+      <div class="mt-1.5 flex justify-between pl-12 text-[11px] text-slate-400">
         <span>{{ serie.length ? dm(serie[0].fecha) : '' }}</span>
         <span>{{ serie.length ? dm(serie[Math.floor(serie.length / 2)].fecha) : '' }}</span>
         <span>{{ serie.length ? dm(serie[serie.length - 1].fecha) : 'hoy' }}</span>
