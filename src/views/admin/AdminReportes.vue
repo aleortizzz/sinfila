@@ -9,6 +9,14 @@ const cargando = ref(true)
 const error = ref(null)
 const data = ref(null)
 const metrica = ref('ventas') // 'ventas' | 'pedidos'
+const periodo = ref(30) // 7 / 30 / 90 / 0 (desde el inicio)
+
+const PERIODOS = [
+  [7, '7 días'],
+  [30, '30 días'],
+  [90, '90 días'],
+  [0, 'Desde el inicio'],
+]
 
 let cargado = false
 watch(
@@ -21,11 +29,15 @@ watch(
   },
   { immediate: true },
 )
+watch(periodo, () => {
+  if (cargado) cargar()
+})
 
 async function cargar() {
   cargando.value = true
+  error.value = null
   try {
-    data.value = await obtenerReporte(props.local.id)
+    data.value = await obtenerReporte(props.local.id, periodo.value)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -65,17 +77,39 @@ const ESTADO = {
   avisado: 'bg-purple-100 text-purple-700',
   entregado: 'bg-slate-100 text-slate-600',
 }
+
+const rangoReal = computed(() => {
+  if (!serie.value.length) return 'sin datos'
+  return `del ${dm(serie.value[0].fecha)} al ${dm(serie.value[serie.value.length - 1].fecha)}`
+})
 </script>
 
 <template>
-  <section v-if="cargando" class="text-slate-500">Cargando…</section>
-  <section v-else-if="error" class="text-red-600">{{ error }}</section>
-
-  <section v-else class="max-w-4xl space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-900">Reportes</h1>
-      <p class="text-sm text-slate-500">Últimos 30 días · hora de Argentina · sin rechazados ni cancelados.</p>
+  <section class="max-w-4xl space-y-6">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Reportes</h1>
+        <p class="text-sm text-slate-500">
+          {{ cargando ? 'Cargando…' : rangoReal }} · hora de Argentina · sin rechazados ni cancelados.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="p in PERIODOS"
+          :key="p[0]"
+          type="button"
+          @click="periodo = p[0]"
+          :class="['chip', periodo === p[0] && 'chip-active']"
+        >
+          {{ p[1] }}
+        </button>
+      </div>
     </div>
+
+    <p v-if="error" class="text-red-600">{{ error }}</p>
+    <p v-else-if="cargando" class="text-slate-500">Cargando…</p>
+
+    <template v-else>
 
     <!-- Serie diaria -->
     <div class="card p-5">
@@ -198,5 +232,7 @@ const ESTADO = {
         </table>
       </div>
     </div>
+    </template>
   </section>
 </template>
+

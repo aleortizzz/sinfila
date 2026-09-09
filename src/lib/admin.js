@@ -20,8 +20,9 @@ export async function obtenerEstadisticas(localId) {
   return data // { pedidos_hoy, ventas_hoy, pedidos_7d, ventas_7d, ventas_mes, productos_activos } | null
 }
 
-export async function obtenerReporte(localId) {
-  const { data, error } = await supabase.rpc('reporte_local', { p_local_id: localId })
+// dias: 7 / 30 / 90, o 0 = desde que se creó el local.
+export async function obtenerReporte(localId, dias = 30) {
+  const { data, error } = await supabase.rpc('reporte_local', { p_local_id: localId, p_dias: dias })
   if (error) throw error
   return data // { serie:[{fecha,pedidos,ventas}], top:[{nombre,unidades,monto}], recientes:[...] } | null
 }

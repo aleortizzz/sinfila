@@ -389,7 +389,10 @@ gracia; y que el super-admin pueda suspender/reactivar a mano.
 
 ## Reportes (2026-09-09)
 
-Migración `20260909150000_reporte_local.sql`: `reporte_local(local_id)`
+Migraciones `20260909150000_reporte_local.sql` +
+`20260909160000_reporte_periodo.sql`: `reporte_local(local_id, p_dias)`
+(`p_dias` = 7 / 30 / 90, o <= 0 = desde que se creó el local — se clampa a
+`locales.created_at`)
 (security definer, guardada por `es_dueño_local`) devuelve, para los
 últimos 30 días: `serie` (día por día {fecha, pedidos, ventas}, con
 generate_series para no saltear días sin ventas), `top` (10 productos más
