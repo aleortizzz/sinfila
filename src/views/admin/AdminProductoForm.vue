@@ -13,6 +13,8 @@ import {
   actualizarOpcion,
   eliminarOpcion,
 } from '../../lib/admin'
+import { subirImagen } from '../../lib/storage'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 const props = defineProps({ local: Object })
 const route = useRoute()
@@ -42,6 +44,19 @@ const form = reactive({
 const grupos = ref([])
 const nuevoGrupo = reactive({ nombre: '', obligatorio: true })
 const nuevaOpcion = reactive({}) // { [grupoId]: { nombre, precioAjuste } }
+
+const subiendoFoto = ref(false)
+async function onFoto(file) {
+  subiendoFoto.value = true
+  estado.value = null
+  try {
+    form.foto_url = await subirImagen('productos', props.local.id, file, 'foto')
+  } catch (e) {
+    estado.value = { ok: false, msg: e.message }
+  } finally {
+    subiendoFoto.value = false
+  }
+}
 
 let arrancado = false
 watch(
@@ -219,8 +234,14 @@ function volver() {
         </div>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700">Foto (URL)</label>
-        <input v-model="form.foto_url" type="url" class="input" placeholder="https://… (opcional)" />
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Foto <span class="font-normal text-slate-400">(opcional)</span></label>
+        <ImageUpload
+          :url="form.foto_url"
+          :subiendo="subiendoFoto"
+          ratio="aspect-square"
+          @elegir="onFoto"
+          @quitar="form.foto_url = ''"
+        />
       </div>
       <label class="flex items-center justify-between">
         <span class="text-sm text-slate-700">Disponible en la carta</span>

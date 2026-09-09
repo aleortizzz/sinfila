@@ -10,6 +10,8 @@ import {
   eliminarZona,
 } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
+import { subirImagen } from '../../lib/storage'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 // Índice = dia (0 = domingo, igual que extract(dow) en Postgres).
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -49,6 +51,24 @@ const SECCIONES = [
   ['envios', 'Envíos'],
 ]
 const seccion = ref('general')
+
+const subiendoLogo = ref(false)
+const subiendoBanner = ref(false)
+
+async function onImagen(file, prefijo) {
+  const flag = prefijo === 'logo' ? subiendoLogo : subiendoBanner
+  flag.value = true
+  errorGuardar.value = null
+  try {
+    const url = await subirImagen('locales', props.local.id, file, prefijo)
+    if (prefijo === 'logo') form.logo_url = url
+    else form.banner_url = url
+  } catch (e) {
+    errorGuardar.value = e.message
+  } finally {
+    flag.value = false
+  }
+}
 
 const horarios = ref([]) // filas de horarios_local (7)
 const horariosOrdenados = computed(() =>
@@ -284,17 +304,26 @@ async function aplicarAjustePorcentaje() {
     <!-- Branding -->
     <div v-show="seccion === 'branding'" class="card p-5">
       <h2 class="label">Imagen de la carta</h2>
-      <p class="mt-1 text-xs text-slate-400">
-        Por ahora se cargan como URL (más adelante: subir el archivo).
-      </p>
-      <div class="mt-3 space-y-3">
+      <div class="mt-3 space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Logo (URL)</label>
-          <input v-model="form.logo_url" type="url" class="input" placeholder="https://…" />
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Logo</label>
+          <ImageUpload
+            :url="form.logo_url"
+            :subiendo="subiendoLogo"
+            ratio="aspect-square"
+            @elegir="(f) => onImagen(f, 'logo')"
+            @quitar="form.logo_url = ''"
+          />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Banner / portada (URL)</label>
-          <input v-model="form.banner_url" type="url" class="input" placeholder="https://…" />
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Banner / portada</label>
+          <ImageUpload
+            :url="form.banner_url"
+            :subiendo="subiendoBanner"
+            ratio="aspect-video"
+            @elegir="(f) => onImagen(f, 'banner')"
+            @quitar="form.banner_url = ''"
+          />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium text-slate-700">Color principal</label>
