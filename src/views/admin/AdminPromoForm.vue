@@ -149,6 +149,31 @@ function volver() {
       <h1 class="mt-1 text-2xl font-bold text-slate-900">{{ esNueva ? 'Nueva promo' : 'Editar promo' }}</h1>
     </div>
 
+    <div class="card flex items-center justify-between gap-4 p-4">
+      <div>
+        <p class="font-semibold text-slate-900">{{ form.activa ? 'Promo activa' : 'Promo pausada' }}</p>
+        <p class="text-xs text-slate-500">
+          {{ form.activa
+            ? 'Se aplica sola en los pedidos que caen en su día y horario.'
+            : 'Queda guardada pero no se aplica a ningún pedido.' }}
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        :aria-checked="form.activa"
+        @click="form.activa = !form.activa"
+        :class="['relative h-6 w-11 shrink-0 rounded-full transition', form.activa ? 'bg-brand-500' : 'bg-slate-300']"
+      >
+        <span
+          :class="[
+            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition',
+            form.activa ? 'translate-x-5' : 'translate-x-0',
+          ]"
+        />
+      </button>
+    </div>
+
     <div class="card space-y-4 p-5">
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Nombre</label>
@@ -223,21 +248,13 @@ function volver() {
           :key="p.id"
           class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-50"
         >
-          <input type="checkbox" :value="p.id" v-model="form.productoIds" />
+          <input type="checkbox" :value="p.id" v-model="form.productoIds" class="h-4 w-4 accent-brand-500" />
           <span class="flex-1">{{ p.nombre }}</span>
           <span class="text-xs text-slate-400">{{ pesos(p.precio) }}</span>
         </label>
         <p v-if="!productos.length" class="p-2 text-sm text-slate-400">No hay productos cargados.</p>
       </div>
     </div>
-
-    <label class="flex items-start gap-2 text-sm text-slate-700">
-      <input type="checkbox" v-model="form.activa" class="mt-0.5" />
-      <span>
-        <span class="font-medium">Activa</span> — se aplica sola en los pedidos cuando cae dentro de
-        su día y horario. Destildala para pausarla sin borrarla.
-      </span>
-    </label>
 
     <div class="fixed bottom-0 left-0 right-0 z-10 border-t border-slate-200 bg-white/95 backdrop-blur md:left-60">
       <div class="mx-auto flex max-w-5xl items-center justify-end gap-3 px-6 py-3">

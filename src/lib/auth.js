@@ -54,6 +54,19 @@ export async function reenviarVerificacion(email) {
   if (error) throw esp(error)
 }
 
+export async function pedirResetContrasena(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${window.location.origin}/nueva-contrasena`,
+  })
+  if (error) throw esp(error)
+}
+
+// Se llama estando en la sesión temporal de recuperación (tras el enlace).
+export async function cambiarContrasena(nueva) {
+  const { error } = await supabase.auth.updateUser({ password: nueva })
+  if (error) throw esp(error)
+}
+
 // --- Onboarding / super-admin ---
 
 // Crea negocio + local (pendiente_activacion) + rol de dueño para el usuario

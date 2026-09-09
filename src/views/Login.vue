@@ -80,10 +80,13 @@ async function reenviar() {
           </button>
         </form>
 
-        <p class="mt-4 text-center text-xs text-slate-400">
-          ¿No tenés cuenta?
-          <RouterLink to="/registro" class="font-medium text-slate-600 underline">Registrá tu local</RouterLink>
-        </p>
+        <div class="mt-4 flex flex-col items-center gap-1 text-xs text-slate-400">
+          <RouterLink to="/recuperar" class="underline hover:text-slate-600">¿Olvidaste tu contraseña?</RouterLink>
+          <span>
+            ¿No tenés cuenta?
+            <RouterLink to="/registro" class="font-medium text-slate-600 underline">Registrá tu local</RouterLink>
+          </span>
+        </div>
       </div>
     </div>
   </section>

@@ -6,6 +6,8 @@ const routes = [
 
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { bare: true } },
   { path: '/registro', name: 'registro', component: () => import('../views/Registro.vue'), meta: { bare: true } },
+  { path: '/recuperar', name: 'recuperar', component: () => import('../views/Recuperar.vue'), meta: { bare: true } },
+  { path: '/nueva-contrasena', name: 'nueva-contrasena', component: () => import('../views/NuevaContrasena.vue'), meta: { bare: true } },
   {
     path: '/superadmin',
     name: 'superadmin',
