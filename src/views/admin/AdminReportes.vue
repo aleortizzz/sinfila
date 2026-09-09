@@ -151,10 +151,16 @@ const rangoReal = computed(() => {
         </div>
       </div>
 
-      <!-- Serie diaria -->
+      <!-- Actividad: gráfico + qué se vendió, juntos -->
       <div class="card p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <p class="label">{{ metrica === 'ventas' ? 'Ventas por día' : 'Pedidos por día' }}</p>
+          <div>
+            <p class="label">Actividad del período</p>
+            <p class="mt-1 text-sm text-slate-500">
+              {{ metrica === 'ventas' ? 'Lo que facturaste' : 'Los pedidos que entraron' }} día por día.
+              Tocá una barra para ver qué se vendió ese día.
+            </p>
+          </div>
           <div class="flex gap-2">
             <button
               v-for="op in [['ventas', 'Ventas'], ['pedidos', 'Pedidos']]"
@@ -167,12 +173,6 @@ const rangoReal = computed(() => {
             </button>
           </div>
         </div>
-
-        <p class="mt-1 text-xs text-slate-400">
-          {{ metrica === 'ventas' ? 'Cuánto facturaste cada día.' : 'Cuántos pedidos entraron cada día.' }}
-          <span v-if="diaPico"> · Pico: {{ valorDia(diaPico) }} el {{ dm(diaPico.fecha) }}.</span>
-          · Tocá una barra para ver los productos de ese día.
-        </p>
 
         <div class="relative mt-6 h-44">
           <div
@@ -213,25 +213,24 @@ const rangoReal = computed(() => {
           <span>{{ serie.length ? dm(serie[Math.floor(serie.length / 2)].fecha) : '' }}</span>
           <span>{{ serie.length ? dm(serie[serie.length - 1].fecha) : 'hoy' }}</span>
         </div>
-      </div>
 
-      <!-- Top productos -->
-      <div class="card p-5">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="label">
-            Más vendidos
-            <span v-if="diaSel" class="text-slate-900">· {{ dm(diaSel) }}</span>
-            <span v-else class="font-normal text-slate-400">· todo el período</span>
-          </p>
-          <button
-            v-if="diaSel"
-            type="button"
-            @click="verTodo"
-            class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700"
-          >
-            Ver todo el período
-          </button>
-        </div>
+        <!-- Más vendidos: mismo card, debajo del gráfico -->
+        <div class="mt-6 border-t border-slate-200 pt-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-semibold text-slate-900">
+              Más vendidos
+              <span v-if="diaSel" class="text-slate-500">· el {{ dm(diaSel) }}</span>
+              <span v-else class="font-normal text-slate-400">· todo el período</span>
+            </p>
+            <button
+              v-if="diaSel"
+              type="button"
+              @click="verTodo"
+              class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700"
+            >
+              ← Ver todo el período
+            </button>
+          </div>
 
         <table class="mt-3 w-full text-sm">
           <thead>
@@ -257,6 +256,7 @@ const rangoReal = computed(() => {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <RouterLink
