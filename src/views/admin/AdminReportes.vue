@@ -101,7 +101,7 @@ const previoLabel = computed(() => {
 })
 const tarjetas = computed(() => [
   { label: 'Pedidos', valor: resumen.value.pedidos, d: delta(resumen.value.pedidos, previo.value.pedidos) },
-  { label: 'Ventas', valor: pesos(resumen.value.ventas), d: delta(resumen.value.ventas, previo.value.ventas) },
+  { label: 'Facturación', valor: pesos(resumen.value.ventas), d: delta(resumen.value.ventas, previo.value.ventas) },
   { label: 'Ticket promedio', valor: pesos(resumen.value.ticket), d: delta(resumen.value.ticket, previo.value.ticket) },
 ])
 
@@ -182,7 +182,7 @@ const rangoReal = computed(() => {
           </div>
           <div class="flex gap-2">
             <button
-              v-for="op in [['ventas', 'Ventas'], ['pedidos', 'Pedidos']]"
+              v-for="op in [['ventas', 'Facturación'], ['pedidos', 'Pedidos']]"
               :key="op[0]"
               type="button"
               @click="metrica = op[0]"

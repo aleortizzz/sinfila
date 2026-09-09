@@ -44,14 +44,14 @@ const menu = computed(() => (props.local ? `/panel/${props.local.slug}/admin/men
 // al reporte con el detalle (productos activos va al menú).
 const hoy = computed(() => [
   { label: 'Pedidos hoy', valor: stats.value?.pedidos_hoy ?? 0, to: reportes.value },
-  { label: 'Ventas hoy', valor: pesos(stats.value?.ventas_hoy ?? 0), to: reportes.value },
+  { label: 'Facturación hoy', valor: pesos(stats.value?.ventas_hoy ?? 0), to: reportes.value },
   { label: 'Ticket promedio', valor: pesos(ticketHoy.value), to: reportes.value },
   { label: 'Productos activos', valor: stats.value?.productos_activos ?? 0, to: menu.value },
 ])
 const periodos = computed(() => [
   { label: 'Pedidos · últimos 7 días', valor: stats.value?.pedidos_7d ?? 0, to: reportes.value },
-  { label: 'Ventas · últimos 7 días', valor: pesos(stats.value?.ventas_7d ?? 0), to: reportes.value },
-  { label: 'Ventas del mes', valor: pesos(stats.value?.ventas_mes ?? 0), to: reportes.value },
+  { label: 'Facturación · últimos 7 días', valor: pesos(stats.value?.ventas_7d ?? 0), to: reportes.value },
+  { label: 'Facturación del mes', valor: pesos(stats.value?.ventas_mes ?? 0), to: reportes.value },
 ])
 </script>
 
