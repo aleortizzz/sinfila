@@ -116,15 +116,16 @@ const ESTADO = {
         </div>
 
         <div class="absolute inset-0 flex items-end gap-1 pl-12">
-          <div v-for="d in serie" :key="d.fecha" class="group relative flex-1">
+          <div v-for="d in serie" :key="d.fecha" class="group flex h-full flex-1 items-end">
             <div
-              class="min-h-[3px] w-full rounded-t bg-brand-500/80 transition group-hover:bg-brand-500"
+              class="relative min-h-[3px] w-full rounded-t bg-brand-500/80 transition group-hover:bg-brand-500"
               :style="{ height: altura(d) + '%' }"
-            />
-            <div
-              class="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-1 text-[10px] font-medium text-white group-hover:block"
             >
-              {{ dm(d.fecha) }} · {{ valorDia(d) }}
+              <div
+                class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-1 text-[10px] font-medium text-white group-hover:block"
+              >
+                {{ dm(d.fecha) }} · {{ valorDia(d) }}
+              </div>
             </div>
           </div>
         </div>
