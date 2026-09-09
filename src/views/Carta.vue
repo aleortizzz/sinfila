@@ -222,7 +222,7 @@ onBeforeUnmount(() => observer?.disconnect())
     <template v-else>
       <!-- Hero / banner -->
       <header class="relative">
-        <div class="aspect-[2/1] w-full overflow-hidden bg-slate-200 sm:aspect-[16/5]">
+        <div class="aspect-[2/1] w-full overflow-hidden bg-slate-200 sm:aspect-auto sm:h-[clamp(13rem,38vh,23rem)]">
           <img
             v-if="local.banner_url"
             :src="local.banner_url"
