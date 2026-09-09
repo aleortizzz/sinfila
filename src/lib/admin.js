@@ -21,24 +21,30 @@ export async function obtenerEstadisticas(localId) {
 }
 
 // rango: { desde, hasta, prevDesde, prevHasta } — ver lib/periodos.js.
-export async function obtenerReporte(localId, { desde = null, hasta = null, prevDesde = null, prevHasta = null } = {}) {
+// categoriaId: null = todo el local; con id = solo ítems de esa categoría.
+export async function obtenerReporte(
+  localId,
+  { desde = null, hasta = null, prevDesde = null, prevHasta = null, categoriaId = null } = {},
+) {
   const { data, error } = await supabase.rpc('reporte_local', {
     p_local_id: localId,
     p_desde: desde,
     p_hasta: hasta,
     p_prev_desde: prevDesde,
     p_prev_hasta: prevHasta,
+    p_categoria_id: categoriaId,
   })
   if (error) throw error
   return data // { desde, hasta, serie, top, resumen, previo } | null
 }
 
 // Más vendidos de un rango (para filtrar por el día clickeado en el gráfico).
-export async function obtenerTopProductos(localId, desde, hasta) {
+export async function obtenerTopProductos(localId, desde, hasta, categoriaId = null) {
   const { data, error } = await supabase.rpc('top_productos_local', {
     p_local_id: localId,
     p_desde: desde,
     p_hasta: hasta,
+    p_categoria_id: categoriaId,
   })
   if (error) throw error
   return data ?? []

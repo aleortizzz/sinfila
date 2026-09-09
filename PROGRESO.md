@@ -387,6 +387,25 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Reportes: filtro por categoría (2026-09-09)
+
+Pedido del usuario: ver por período cómo se movió una categoría (p. ej.
+"los tragos").
+
+- Migración `20260910120000_reporte_por_categoria.sql`: `reporte_local` y
+  `top_productos_local` suman `p_categoria_id uuid default null`.
+  - NULL → igual que antes (totales por pedido).
+  - Con id → se mira ítem por ítem: `ventas` = monto neto de los ítems de
+    esa categoría, `pedidos` = pedidos que tuvieron al menos un ítem de la
+    categoría, `ticket` = ventas / esos pedidos. `top` queda acotado a la
+    categoría. Los ítems de combo no tienen categoría, quedan fuera (ok).
+- `lib/admin.js`: `obtenerReporte(localId, { ..., categoriaId })` y
+  `obtenerTopProductos(localId, desde, hasta, categoriaId)`.
+- `AdminReportes.vue`: `<select>` de categoría al lado del de período
+  (carga con `obtenerCategoriasAdmin`), "Todas las categorías" = sin
+  filtro. Subtítulo muestra "· solo Tragos" cuando hay filtro. El drill-
+  down por día también respeta la categoría.
+
 ## Filtro de período por mes (2026-09-09)
 
 Pedido del usuario: en vez de "7 días / 30 días / 90 días", filtrar **por

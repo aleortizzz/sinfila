@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { obtenerReporte, obtenerTopProductos } from '../../lib/admin'
+import { obtenerReporte, obtenerTopProductos, obtenerCategoriasAdmin } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
 import { opcionesPeriodo, periodoPorDefecto, rangoPeriodo } from '../../lib/periodos'
 
@@ -15,6 +15,13 @@ const metrica = ref('ventas') // 'ventas' | 'pedidos'
 const OPCIONES = computed(() => opcionesPeriodo(props.local?.created_at))
 const periodo = ref(periodoPorDefecto())
 
+// Filtro por categoría ('' = todo el local).
+const categorias = ref([])
+const categoria = ref('')
+const nombreCategoria = computed(
+  () => categorias.value.find((c) => c.id === categoria.value)?.nombre ?? '',
+)
+
 // Día elegido en el gráfico → filtra "Más vendidos" a ese día.
 const diaSel = ref(null)
 const topDia = ref([])
@@ -23,15 +30,20 @@ const cargandoTop = ref(false)
 let cargado = false
 watch(
   () => props.local,
-  (l) => {
+  async (l) => {
     if (l && !cargado) {
       cargado = true
       cargar()
+      try {
+        categorias.value = await obtenerCategoriasAdmin(l.id)
+      } catch {
+        categorias.value = []
+      }
     }
   },
   { immediate: true },
 )
-watch(periodo, () => {
+watch([periodo, categoria], () => {
   if (cargado) cargar()
 })
 
@@ -40,7 +52,10 @@ async function cargar() {
   error.value = null
   diaSel.value = null
   try {
-    data.value = await obtenerReporte(props.local.id, rangoPeriodo(periodo.value))
+    data.value = await obtenerReporte(props.local.id, {
+      ...rangoPeriodo(periodo.value),
+      categoriaId: categoria.value || null,
+    })
   } catch (e) {
     error.value = e.message
   } finally {
@@ -53,7 +68,7 @@ async function seleccionarDia(d) {
   diaSel.value = d.fecha
   cargandoTop.value = true
   try {
-    topDia.value = await obtenerTopProductos(props.local.id, d.fecha, d.fecha)
+    topDia.value = await obtenerTopProductos(props.local.id, d.fecha, d.fecha, categoria.value || null)
   } catch {
     topDia.value = []
   } finally {
@@ -118,11 +133,18 @@ const rangoReal = computed(() => {
         <h1 class="text-2xl font-bold text-slate-900">Reportes</h1>
         <p class="text-sm text-slate-500">
           {{ cargando ? 'Cargando…' : rangoReal }} · hora de Argentina · sin rechazados ni cancelados.
+          <span v-if="nombreCategoria" class="font-medium t-brand">· solo {{ nombreCategoria }}</span>
         </p>
       </div>
-      <select v-model="periodo" class="input w-auto">
-        <option v-for="o in OPCIONES" :key="o.id" :value="o.id">{{ o.label }}</option>
-      </select>
+      <div class="flex flex-wrap gap-2">
+        <select v-model="categoria" class="input w-auto">
+          <option value="">Todas las categorías</option>
+          <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+        </select>
+        <select v-model="periodo" class="input w-auto">
+          <option v-for="o in OPCIONES" :key="o.id" :value="o.id">{{ o.label }}</option>
+        </select>
+      </div>
     </div>
 
     <p v-if="error" class="text-red-600">{{ error }}</p>
