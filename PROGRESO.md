@@ -387,6 +387,21 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Reportes (2026-09-09)
+
+Migración `20260909150000_reporte_local.sql`: `reporte_local(local_id)`
+(security definer, guardada por `es_dueño_local`) devuelve, para los
+últimos 30 días: `serie` (día por día {fecha, pedidos, ventas}, con
+generate_series para no saltear días sin ventas), `top` (10 productos más
+vendidos por unidades, con monto neto de descuento), `recientes` (últimos
+20 pedidos con # / fecha / cliente / items / pago / total / estado).
+
+- `AdminReportes.vue` en `/panel/:slug/admin/reportes` + ítem "Reportes" en
+  el sidebar. Gráfico de barras por día (toggle Ventas/Pedidos, hecho con
+  divs, sin librería), tabla de más vendidos, tabla de últimos pedidos.
+- `AdminHome`: las tarjetas de stats ahora son links — las de hoy/período
+  van al reporte, "Productos activos" al menú.
+
 ## Estadísticas reales en el Inicio del panel (2026-09-09)
 
 Hito 8 / "estadísticas". Migración `20260909140000_estadisticas_local.sql`:

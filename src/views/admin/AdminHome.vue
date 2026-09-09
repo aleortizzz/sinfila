@@ -37,17 +37,21 @@ const ticketHoy = computed(() => {
   return Number(stats.value.ventas_hoy) / stats.value.pedidos_hoy
 })
 
-// Tarjetas de "hoy" + una fila de contexto (7 días / mes).
+const reportes = computed(() => (props.local ? `/panel/${props.local.slug}/admin/reportes` : ''))
+const menu = computed(() => (props.local ? `/panel/${props.local.slug}/admin/menu` : ''))
+
+// Tarjetas de "hoy" + una fila de contexto (7 días / mes). Cada una linkea
+// al reporte con el detalle (productos activos va al menú).
 const hoy = computed(() => [
-  { label: 'Pedidos hoy', valor: stats.value?.pedidos_hoy ?? 0 },
-  { label: 'Ventas hoy', valor: pesos(stats.value?.ventas_hoy ?? 0) },
-  { label: 'Ticket promedio', valor: pesos(ticketHoy.value) },
-  { label: 'Productos activos', valor: stats.value?.productos_activos ?? 0 },
+  { label: 'Pedidos hoy', valor: stats.value?.pedidos_hoy ?? 0, to: reportes.value },
+  { label: 'Ventas hoy', valor: pesos(stats.value?.ventas_hoy ?? 0), to: reportes.value },
+  { label: 'Ticket promedio', valor: pesos(ticketHoy.value), to: reportes.value },
+  { label: 'Productos activos', valor: stats.value?.productos_activos ?? 0, to: menu.value },
 ])
 const periodos = computed(() => [
-  { label: 'Pedidos · últimos 7 días', valor: stats.value?.pedidos_7d ?? 0 },
-  { label: 'Ventas · últimos 7 días', valor: pesos(stats.value?.ventas_7d ?? 0) },
-  { label: 'Ventas del mes', valor: pesos(stats.value?.ventas_mes ?? 0) },
+  { label: 'Pedidos · últimos 7 días', valor: stats.value?.pedidos_7d ?? 0, to: reportes.value },
+  { label: 'Ventas · últimos 7 días', valor: pesos(stats.value?.ventas_7d ?? 0), to: reportes.value },
+  { label: 'Ventas del mes', valor: pesos(stats.value?.ventas_mes ?? 0), to: reportes.value },
 ])
 </script>
 
@@ -60,24 +64,35 @@ const periodos = computed(() => [
 
     <!-- Hoy -->
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div v-for="s in hoy" :key="s.label" class="card p-4">
+      <RouterLink
+        v-for="s in hoy"
+        :key="s.label"
+        :to="s.to"
+        class="card group p-4 transition hover:border-brand-300 hover:shadow-md"
+      >
         <p class="label">{{ s.label }}</p>
         <p class="mt-2 text-2xl font-extrabold text-slate-900">
           <span v-if="cargando" class="text-slate-300">—</span>
           <span v-else>{{ s.valor }}</span>
         </p>
-      </div>
+        <span class="mt-1 inline-block text-[11px] text-slate-400 group-hover:text-brand-600">Ver detalle →</span>
+      </RouterLink>
     </div>
 
     <!-- Contexto -->
     <div class="mt-4 grid gap-4 sm:grid-cols-3">
-      <div v-for="s in periodos" :key="s.label" class="rounded-xl border border-slate-200 bg-white p-4">
+      <RouterLink
+        v-for="s in periodos"
+        :key="s.label"
+        :to="s.to"
+        class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-brand-300 hover:shadow-sm"
+      >
         <p class="text-xs font-medium text-slate-500">{{ s.label }}</p>
         <p class="mt-1 text-lg font-bold text-slate-900">
           <span v-if="cargando" class="text-slate-300">—</span>
           <span v-else>{{ s.valor }}</span>
         </p>
-      </div>
+      </RouterLink>
     </div>
 
     <h2 class="mt-8 text-sm font-semibold text-slate-500">Accesos rápidos</h2>

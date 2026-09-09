@@ -35,6 +35,7 @@ const routes = [
     meta: { requiresAuth: true, bare: true },
     children: [
       { path: '', name: 'admin-home', component: () => import('../views/admin/AdminHome.vue') },
+      { path: 'reportes', name: 'admin-reportes', component: () => import('../views/admin/AdminReportes.vue') },
       { path: 'menu', name: 'admin-menu', component: () => import('../views/admin/AdminMenu.vue') },
       { path: 'menu/productos/nuevo', name: 'admin-producto-nuevo', component: () => import('../views/admin/AdminProductoForm.vue') },
       { path: 'menu/productos/:productoId/editar', name: 'admin-producto-editar', component: () => import('../views/admin/AdminProductoForm.vue') },

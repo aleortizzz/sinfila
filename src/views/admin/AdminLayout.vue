@@ -43,6 +43,12 @@ const NAV = [
     icon: 'M11.47 3.84a.75.75 0 011.06 0l8.25 8.25a.75.75 0 11-1.06 1.06l-.97-.97V19.5a1.5 1.5 0 01-1.5 1.5h-3a.75.75 0 01-.75-.75V15a.75.75 0 00-.75-.75h-1.5a.75.75 0 00-.75.75v5.25a.75.75 0 01-.75.75h-3a1.5 1.5 0 01-1.5-1.5V12.18l-.97.97a.75.75 0 11-1.06-1.06l8.25-8.25z',
   },
   {
+    to: (slug) => `/panel/${slug}/admin/reportes`,
+    label: 'Reportes',
+    exact: false,
+    icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z',
+  },
+  {
     to: (slug) => `/panel/${slug}/admin/menu`,
     label: 'Menú',
     exact: false,
@@ -69,6 +75,7 @@ const NAV = [
 ]
 
 const tituloPagina = computed(() => {
+  if (route.name === 'admin-reportes') return 'Reportes'
   if (route.name === 'admin-menu') return 'Menú'
   if (route.name === 'admin-producto-nuevo') return 'Nuevo producto'
   if (route.name === 'admin-producto-editar') return 'Editar producto'

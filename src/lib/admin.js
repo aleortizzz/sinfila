@@ -20,6 +20,12 @@ export async function obtenerEstadisticas(localId) {
   return data // { pedidos_hoy, ventas_hoy, pedidos_7d, ventas_7d, ventas_mes, productos_activos } | null
 }
 
+export async function obtenerReporte(localId) {
+  const { data, error } = await supabase.rpc('reporte_local', { p_local_id: localId })
+  if (error) throw error
+  return data // { serie:[{fecha,pedidos,ventas}], top:[{nombre,unidades,monto}], recientes:[...] } | null
+}
+
 // --- Config del local ---
 // El dueño tiene UPDATE columna por columna sobre "locales" (ver los GRANT
 // en la migración base): puede tocar nombre/horarios/branding/pago/delivery
