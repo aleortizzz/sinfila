@@ -8,7 +8,7 @@ export async function obtenerLocalPorSlug(slug) {
   const { data, error } = await supabase
     .from('locales')
     .select(
-      `id, nombre, slug, estado, logo_url, color_primario, banner_url,
+      `id, nombre, slug, estado, created_at, logo_url, color_primario, banner_url,
        horario_apertura, horario_cierre,
        horario_barra_apertura, horario_barra_cierre,
        horario_cocina_apertura, horario_cocina_cierre,

@@ -393,12 +393,15 @@ Pedido del usuario: en vez de "7 días / 30 días / 90 días", filtrar **por
 mes**, y que el cambio "impacte en todo, que funcione en todos lados por
 igual".
 
-- **`src/lib/periodos.js`** (NUEVO, un solo lugar): `opcionesPeriodo()`
-  arma la lista del `<select>` — Hoy · Últimos 7 días · los últimos 12
-  meses (`mes:2026-09`, etc.) · Desde el inicio. `periodoPorDefecto()` = el
+- **`src/lib/periodos.js`** (NUEVO, un solo lugar): `opcionesPeriodo(creadoEn)`
+  arma la lista del `<select>` — Hoy · Últimos 7 / 30 / 90 días · un ítem
+  por mes **desde que abrió el local** (`created_at` recorta la lista, no
+  se muestran meses previos) · Desde el inicio. `periodoPorDefecto()` = el
   mes en curso. `rangoPeriodo(id)` traduce a `{ desde, hasta, prevDesde,
   prevHasta }` en `YYYY-MM-DD` (o `null` = desde que abrió el local / sin
-  comparación). Un mes en curso corta `hasta` en hoy.
+  comparación). `'Nd'` = últimos N días con período anterior de N días.
+  Un mes en curso corta `hasta` en hoy.
+- `obtenerLocalPorSlug` ahora trae `created_at` para poder recortar los meses.
 - Migración `20260910100000_reportes_rango.sql`: `reporte_local` e
   `historial_pedidos` pasan de `p_dias int` a **rango de fechas explícito**
   (`p_desde` / `p_hasta`, null = desde `locales.created_at`). `reporte_local`

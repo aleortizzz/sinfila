@@ -12,7 +12,7 @@ const cargando = ref(true)
 const error = ref(null)
 const data = ref(null)
 const metrica = ref('ventas') // 'ventas' | 'pedidos'
-const OPCIONES = opcionesPeriodo()
+const OPCIONES = computed(() => opcionesPeriodo(props.local?.created_at))
 const periodo = ref(periodoPorDefecto())
 
 // Día elegido en el gráfico → filtra "Más vendidos" a ese día.

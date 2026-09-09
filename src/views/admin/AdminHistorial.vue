@@ -7,7 +7,7 @@ import PedidoDetalleModal from '../../components/PedidoDetalleModal.vue'
 
 const props = defineProps({ local: Object })
 
-const OPCIONES = opcionesPeriodo()
+const OPCIONES = computed(() => opcionesPeriodo(props.local?.created_at))
 const ESTADOS = [
   ['', 'Todos'],
   ['pendiente', 'Pendiente'],
