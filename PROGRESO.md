@@ -401,10 +401,27 @@ Pedido del usuario: ver por período cómo se movió una categoría (p. ej.
     categoría. Los ítems de combo no tienen categoría, quedan fuera (ok).
 - `lib/admin.js`: `obtenerReporte(localId, { ..., categoriaId })` y
   `obtenerTopProductos(localId, desde, hasta, categoriaId)`.
-- `AdminReportes.vue`: `<select>` de categoría al lado del de período
-  (carga con `obtenerCategoriasAdmin`), "Todas las categorías" = sin
-  filtro. Subtítulo muestra "· solo Tragos" cuando hay filtro. El drill-
+- `AdminReportes.vue`: los dos `<select>` (categoría + período) pasan a
+  una fila propia y fija bajo el título (antes el `justify-between` los
+  saltaba de renglón cuando el subtítulo crecía con "· solo X"). "Todas
+  las categorías" = sin filtro. Subtítulo muestra "· solo Tragos"; el
+  gráfico aclara "sin envío ni combos, ventas netas de promo". El drill-
   down por día también respeta la categoría.
+
+**Cómo se miden combos y promos** (para tener claro):
+- Un **combo** es UNA fila en `pedido_items` (`combo_id` seteado,
+  `producto_id` NULL, `precio_unitario` = precio del combo). Los
+  componentes (1 Skyy + 2 Speed) NO son líneas del pedido, solo viven en
+  `combo_items`. → Con filtro por categoría los combos quedan fuera
+  (no tienen categoría). En "Todas" aparecen como "Combo X".
+- Un **3x2**: la fila guarda `cantidad = 3` (salieron 3 tragos) y el
+  `descuento_aplicado` por unidad cubre la unidad gratis. → "Más
+  vendidos" cuenta **3 unidades**; el **monto es neto** (pagó 2). Todos
+  los reportes usan `(precio_unitario - descuento_aplicado) * cantidad`,
+  así que siempre muestran la plata que entró, no la de lista.
+- "Todas las categorías" → `Ventas` = `sum(pedidos.total)` (neto de promo
+  **+ envío**). Con categoría → `sum(ítems netos)` (**sin envío**). Por
+  eso no suman exacto entre sí.
 
 ## Filtro de período por mes (2026-09-09)
 

@@ -128,7 +128,7 @@ const rangoReal = computed(() => {
 
 <template>
   <section class="max-w-4xl space-y-6">
-    <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="space-y-3">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">Reportes</h1>
         <p class="text-sm text-slate-500">
@@ -175,6 +175,9 @@ const rangoReal = computed(() => {
             <p class="mt-1 text-sm text-slate-500">
               {{ metrica === 'ventas' ? 'Lo que facturaste' : 'Los pedidos que entraron' }} día por día.
               Tocá una barra para ver qué se vendió ese día.
+            </p>
+            <p v-if="nombreCategoria" class="mt-1 text-xs text-slate-400">
+              Solo ítems de {{ nombreCategoria }} — sin envío ni combos. Ventas netas de promo.
             </p>
           </div>
           <div class="flex gap-2">
