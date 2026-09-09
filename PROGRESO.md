@@ -387,6 +387,23 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Subir imágenes a Storage (2026-09-09)
+
+Migración `20260909130000`: bucket público `imagenes` (5 MB, mime image/*).
+Path `<carpeta>/<local_id>/<archivo>`; el 2º segmento es el local_id y las
+policies de `storage.objects` habilitan insert/update/delete solo si
+`es_dueño_local(<ese id>)`. Lectura pública (bucket public).
+
+- `lib/storage.js` → `subirImagen(carpeta, localId, archivo, prefijo)`
+  devuelve la URL pública.
+- `components/ImageUpload.vue` → preview + subir/cambiar/quitar.
+- `AdminConfig` (branding): logo y banner pasan de input-URL a upload.
+- `AdminProductoForm`: la foto pasa a upload (funciona en alta y edición,
+  el path usa el local_id, no el producto_id).
+- La imagen se sube al toque; la URL se persiste con "Guardar cambios"
+  (si no guardan, queda un objeto huérfano en el bucket — costo mínimo,
+  se puede limpiar a futuro).
+
 ## Endurecimiento de seguridad (2026-09-09)
 
 Auditoría del modelo de permisos. Lo que YA estaba sólido: `super_admins`
