@@ -13,6 +13,13 @@ function lanzar(error) {
 // filtra disponible=true para la carta pública), acá se ve TODO — el
 // dueño necesita administrar lo que está oculto también.
 
+// --- Estadísticas del inicio (solo dueño) ---
+export async function obtenerEstadisticas(localId) {
+  const { data, error } = await supabase.rpc('estadisticas_local', { p_local_id: localId })
+  if (error) throw error
+  return data // { pedidos_hoy, ventas_hoy, pedidos_7d, ventas_7d, ventas_mes, productos_activos } | null
+}
+
 // --- Config del local ---
 // El dueño tiene UPDATE columna por columna sobre "locales" (ver los GRANT
 // en la migración base): puede tocar nombre/horarios/branding/pago/delivery

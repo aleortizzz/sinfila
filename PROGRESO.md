@@ -387,6 +387,19 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Estadísticas reales en el Inicio del panel (2026-09-09)
+
+Hito 8 / "estadísticas". Migración `20260909140000_estadisticas_local.sql`:
+`estadisticas_local(local_id)` (security definer, guardada por
+`es_dueño_local` — el staff no ve facturación) devuelve un jsonb con
+`pedidos_hoy`, `ventas_hoy`, `pedidos_7d`, `ventas_7d`, `ventas_mes`,
+`productos_activos`. Todo en hora de Argentina, excluye
+rechazados/cancelados.
+
+`AdminHome.vue`: fila "Hoy" (pedidos, ventas, ticket promedio calculado en
+el cliente, productos activos) + fila de contexto (7 días / mes). Los
+placeholders "Pronto" quedaron.
+
 ## PWA instalable (2026-09-09)
 
 `vite-plugin-pwa` (Workbox). Genera `sw.js` (precache de assets + CacheFirst
