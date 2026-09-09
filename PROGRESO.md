@@ -422,6 +422,11 @@ Pedido del usuario: ver por período cómo se movió una categoría (p. ej.
 - "Todas las categorías" → `Ventas` = `sum(pedidos.total)` (neto de promo
   **+ envío**). Con categoría → `sum(ítems netos)` (**sin envío**). Por
   eso no suman exacto entre sí.
+- Checkbox **"Incluir envíos en la facturación"** (migración
+  `20260910140000`, `reporte_local` suma `p_incluir_envio` default true).
+  Destildado resta `costo_delivery` de la facturación / ticket / gráfico.
+  Solo se muestra sin filtro de categoría (con categoría el envío ya
+  queda afuera).
 
 ## Filtro de período por mes (2026-09-09)
 

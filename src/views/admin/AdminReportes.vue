@@ -22,6 +22,9 @@ const nombreCategoria = computed(
   () => categorias.value.find((c) => c.id === categoria.value)?.nombre ?? '',
 )
 
+// Sumar (o no) el costo de envío a la facturación. Solo aplica sin categoría.
+const incluirEnvio = ref(true)
+
 // Día elegido en el gráfico → filtra "Más vendidos" a ese día.
 const diaSel = ref(null)
 const topDia = ref([])
@@ -43,7 +46,7 @@ watch(
   },
   { immediate: true },
 )
-watch([periodo, categoria], () => {
+watch([periodo, categoria, incluirEnvio], () => {
   if (cargado) cargar()
 })
 
@@ -55,6 +58,7 @@ async function cargar() {
     data.value = await obtenerReporte(props.local.id, {
       ...rangoPeriodo(periodo.value),
       categoriaId: categoria.value || null,
+      incluirEnvio: incluirEnvio.value,
     })
   } catch (e) {
     error.value = e.message
@@ -136,7 +140,7 @@ const rangoReal = computed(() => {
           <span v-if="nombreCategoria" class="font-medium t-brand">· solo {{ nombreCategoria }}</span>
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <select v-model="categoria" class="input w-auto">
           <option value="">Todas las categorías</option>
           <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
@@ -144,6 +148,13 @@ const rangoReal = computed(() => {
         <select v-model="periodo" class="input w-auto">
           <option v-for="o in OPCIONES" :key="o.id" :value="o.id">{{ o.label }}</option>
         </select>
+        <label
+          v-if="!nombreCategoria"
+          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm"
+        >
+          <input type="checkbox" v-model="incluirEnvio" class="h-4 w-4 accent-brand-500" />
+          Incluir envíos en la facturación
+        </label>
       </div>
     </div>
 
@@ -178,6 +189,9 @@ const rangoReal = computed(() => {
             </p>
             <p v-if="nombreCategoria" class="mt-1 text-xs text-slate-400">
               Solo ítems de {{ nombreCategoria }} — sin envío ni combos. Ventas netas de promo.
+            </p>
+            <p v-else-if="!incluirEnvio" class="mt-1 text-xs text-slate-400">
+              Sin el costo de envío — solo lo facturado de productos y combos.
             </p>
           </div>
           <div class="flex gap-2">

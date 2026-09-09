@@ -24,7 +24,14 @@ export async function obtenerEstadisticas(localId) {
 // categoriaId: null = todo el local; con id = solo ítems de esa categoría.
 export async function obtenerReporte(
   localId,
-  { desde = null, hasta = null, prevDesde = null, prevHasta = null, categoriaId = null } = {},
+  {
+    desde = null,
+    hasta = null,
+    prevDesde = null,
+    prevHasta = null,
+    categoriaId = null,
+    incluirEnvio = true,
+  } = {},
 ) {
   const { data, error } = await supabase.rpc('reporte_local', {
     p_local_id: localId,
@@ -33,6 +40,7 @@ export async function obtenerReporte(
     p_prev_desde: prevDesde,
     p_prev_hasta: prevHasta,
     p_categoria_id: categoriaId,
+    p_incluir_envio: incluirEnvio,
   })
   if (error) throw error
   return data // { desde, hasta, serie, top, resumen, previo } | null
