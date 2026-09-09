@@ -5,6 +5,7 @@ defineProps({
   url: { type: String, default: '' },
   subiendo: { type: Boolean, default: false },
   ratio: { type: String, default: 'aspect-square' }, // aspect-square | aspect-video
+  recomendado: { type: String, default: '' }, // ej. "800 × 600 px (4:3)"
 })
 const emit = defineEmits(['elegir', 'quitar'])
 
@@ -43,6 +44,9 @@ function onChange(e) {
       >
         Quitar
       </button>
+      <p v-if="recomendado" class="text-[11px] font-medium text-slate-500">
+        Resolución recomendada: {{ recomendado }}
+      </p>
       <p class="text-[11px] text-slate-400">JPG, PNG o WEBP · hasta 5 MB</p>
     </div>
 

@@ -311,6 +311,7 @@ async function aplicarAjustePorcentaje() {
             :url="form.logo_url"
             :subiendo="subiendoLogo"
             ratio="aspect-square"
+            recomendado="400 × 400 px (cuadrada)"
             @elegir="(f) => onImagen(f, 'logo')"
             @quitar="form.logo_url = ''"
           />
@@ -321,6 +322,7 @@ async function aplicarAjustePorcentaje() {
             :url="form.banner_url"
             :subiendo="subiendoBanner"
             ratio="aspect-video"
+            recomendado="1600 × 600 px (horizontal)"
             @elegir="(f) => onImagen(f, 'banner')"
             @quitar="form.banner_url = ''"
           />

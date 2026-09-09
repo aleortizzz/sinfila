@@ -239,6 +239,7 @@ function volver() {
           :url="form.foto_url"
           :subiendo="subiendoFoto"
           ratio="aspect-square"
+          recomendado="800 × 600 px (4:3)"
           @elegir="onFoto"
           @quitar="form.foto_url = ''"
         />
