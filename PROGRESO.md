@@ -387,6 +387,42 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Endurecimiento de seguridad (2026-09-09)
+
+Auditoría del modelo de permisos. Lo que YA estaba sólido: `super_admins`
+sin policy de escritura (nadie se hace super-admin por API); las funciones
+de super-admin revalidan `es_super_admin()` server-side; los GRANT de
+columna en `locales` impiden que un dueño toque su suscripción
+(`estado`/`trial_hasta`/`precio_mensual`/…); `crear_pedido` recalcula todos
+los precios server-side. El guard del router es solo UX.
+
+Huecos tapados:
+- Migración `20260909100000`: se quitaron las policies de INSERT de
+  `pedidos` y `pedido_items` (y el UPDATE de `pedido_items`). Antes,
+  cualquiera con el anon key podía insertar `pedido_items` con
+  `precio_unitario` arbitrario y el trigger de totales lo sumaba. Ahora los
+  pedidos SOLO se crean por `crear_pedido()` (security definer / bypassrls).
+  Verificado: INSERT directo → HTTP 401; `crear_pedido` sigue OK.
+- Migración `20260909110000`: `revoke update on pedidos` + grant solo de
+  `(estado, barra_lista, cocina_lista)` a `authenticated`. Un dueño/staff
+  ya no puede editar totales ni datos del cliente por API. El KDS solo toca
+  esas 3 columnas.
+
+Pendientes (no críticos, no tocan plata): `registrar_negocio` sin
+rate-limit (spam de locales pendientes); separar permisos staff vs dueño
+más fino a futuro.
+
+## Recupero de contraseña (2026-09-09)
+
+`/recuperar` (pide el mail → `resetPasswordForEmail` con
+`redirectTo=<origin>/nueva-contrasena`) y `/nueva-contrasena` (usa la
+sesión temporal de recuperación → `updateUser({ password })` → logout →
+login). Link "¿Olvidaste tu contraseña?" en el login.
+**Config Supabase**: hay que agregar en Auth → URL Configuration →
+Redirect URLs: `http://localhost:5173/**` y
+`https://sinfila.tizdigital.com/**` (o las rutas exactas de
+`/nueva-contrasena`), si no el enlace del mail no vuelve a la app.
+
 ## Ajustes de onboarding (2026-09-08)
 
 - **Registro**: un solo campo "Nombre del local" (negocio y local se
