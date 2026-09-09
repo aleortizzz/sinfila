@@ -107,9 +107,14 @@ const mensajePrincipal = computed(() => {
       <!-- Resumen -->
       <div class="card mt-4 p-4">
         <ul class="divide-y divide-slate-100 text-sm">
-          <li v-for="(item, i) in pedido.items" :key="i" class="flex justify-between py-2">
-            <span>{{ item.cantidad }}× {{ item.nombre }}</span>
-            <span>${{ item.precio_unitario * item.cantidad }}</span>
+          <li v-for="(item, i) in pedido.items" :key="i" class="flex justify-between gap-3 py-2">
+            <span class="min-w-0">
+              {{ item.cantidad }}× {{ item.nombre }}
+              <span v-if="item.opciones && item.opciones.length" class="block text-xs text-slate-500">
+                {{ item.opciones.map((o) => (o.producto ? `${o.producto}: ${o.opcion}` : o.opcion)).join(', ') }}
+              </span>
+            </span>
+            <span class="shrink-0">${{ item.precio_unitario * item.cantidad }}</span>
           </li>
         </ul>
         <div
