@@ -20,11 +20,17 @@ export async function obtenerEstadisticas(localId) {
   return data // { pedidos_hoy, ventas_hoy, pedidos_7d, ventas_7d, ventas_mes, productos_activos } | null
 }
 
-// dias: 7 / 30 / 90, o 0 = desde que se creó el local.
-export async function obtenerReporte(localId, dias = 30) {
-  const { data, error } = await supabase.rpc('reporte_local', { p_local_id: localId, p_dias: dias })
+// rango: { desde, hasta, prevDesde, prevHasta } — ver lib/periodos.js.
+export async function obtenerReporte(localId, { desde = null, hasta = null, prevDesde = null, prevHasta = null } = {}) {
+  const { data, error } = await supabase.rpc('reporte_local', {
+    p_local_id: localId,
+    p_desde: desde,
+    p_hasta: hasta,
+    p_prev_desde: prevDesde,
+    p_prev_hasta: prevHasta,
+  })
   if (error) throw error
-  return data // { serie:[{fecha,pedidos,ventas}], top:[{nombre,unidades,monto}], recientes:[...] } | null
+  return data // { desde, hasta, serie, top, resumen, previo } | null
 }
 
 // Más vendidos de un rango (para filtrar por el día clickeado en el gráfico).
@@ -44,10 +50,14 @@ export async function obtenerDetallePedido(pedidoId) {
   return data
 }
 
-export async function obtenerHistorial(localId, { dias = 30, estado = null, limit = 50, offset = 0 } = {}) {
+export async function obtenerHistorial(
+  localId,
+  { desde = null, hasta = null, estado = null, limit = 50, offset = 0 } = {},
+) {
   const { data, error } = await supabase.rpc('historial_pedidos', {
     p_local_id: localId,
-    p_dias: dias,
+    p_desde: desde,
+    p_hasta: hasta,
     p_estado: estado,
     p_limit: limit,
     p_offset: offset,

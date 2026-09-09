@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { obtenerReporte, obtenerTopProductos } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
+import { opcionesPeriodo, periodoPorDefecto, rangoPeriodo } from '../../lib/periodos'
 
 const props = defineProps({ local: Object })
 const route = useRoute()
@@ -11,19 +12,13 @@ const cargando = ref(true)
 const error = ref(null)
 const data = ref(null)
 const metrica = ref('ventas') // 'ventas' | 'pedidos'
-const periodo = ref(30) // 7 / 30 / 90 / 0 (desde el inicio)
+const OPCIONES = opcionesPeriodo()
+const periodo = ref(periodoPorDefecto())
 
 // Día elegido en el gráfico → filtra "Más vendidos" a ese día.
 const diaSel = ref(null)
 const topDia = ref([])
 const cargandoTop = ref(false)
-
-const PERIODOS = [
-  [7, '7 días'],
-  [30, '30 días'],
-  [90, '90 días'],
-  [0, 'Desde el inicio'],
-]
 
 let cargado = false
 watch(
@@ -45,7 +40,7 @@ async function cargar() {
   error.value = null
   diaSel.value = null
   try {
-    data.value = await obtenerReporte(props.local.id, periodo.value)
+    data.value = await obtenerReporte(props.local.id, rangoPeriodo(periodo.value))
   } catch (e) {
     error.value = e.message
   } finally {
@@ -119,17 +114,9 @@ const rangoReal = computed(() => {
           {{ cargando ? 'Cargando…' : rangoReal }} · hora de Argentina · sin rechazados ni cancelados.
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="p in PERIODOS"
-          :key="p[0]"
-          type="button"
-          @click="periodo = p[0]"
-          :class="['chip', periodo === p[0] && 'chip-active']"
-        >
-          {{ p[1] }}
-        </button>
-      </div>
+      <select v-model="periodo" class="input w-auto">
+        <option v-for="o in OPCIONES" :key="o.id" :value="o.id">{{ o.label }}</option>
+      </select>
     </div>
 
     <p v-if="error" class="text-red-600">{{ error }}</p>

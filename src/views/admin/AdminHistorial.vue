@@ -2,16 +2,12 @@
 import { ref, computed, watch } from 'vue'
 import { obtenerHistorial } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
+import { opcionesPeriodo, periodoPorDefecto, rangoPeriodo } from '../../lib/periodos'
 import PedidoDetalleModal from '../../components/PedidoDetalleModal.vue'
 
 const props = defineProps({ local: Object })
 
-const PERIODOS = [
-  [7, '7 días'],
-  [30, '30 días'],
-  [90, '90 días'],
-  [0, 'Desde el inicio'],
-]
+const OPCIONES = opcionesPeriodo()
 const ESTADOS = [
   ['', 'Todos'],
   ['pendiente', 'Pendiente'],
@@ -24,7 +20,7 @@ const ESTADOS = [
 ]
 const LIMIT = 50
 
-const periodo = ref(30)
+const periodo = ref(periodoPorDefecto())
 const estado = ref('')
 const pedidoSel = ref(null)
 const cargando = ref(true)
@@ -48,16 +44,16 @@ watch([periodo, estado], () => {
   if (cargado) cargar()
 })
 
+function args(offset) {
+  const { desde, hasta } = rangoPeriodo(periodo.value)
+  return { desde, hasta, estado: estado.value || null, limit: LIMIT, offset }
+}
+
 async function cargar() {
   cargando.value = true
   error.value = null
   try {
-    const r = await obtenerHistorial(props.local.id, {
-      dias: periodo.value,
-      estado: estado.value || null,
-      limit: LIMIT,
-      offset: 0,
-    })
+    const r = await obtenerHistorial(props.local.id, args(0))
     pedidos.value = r.pedidos
     total.value = r.total
   } catch (e) {
@@ -70,12 +66,7 @@ async function cargar() {
 async function cargarMas() {
   cargandoMas.value = true
   try {
-    const r = await obtenerHistorial(props.local.id, {
-      dias: periodo.value,
-      estado: estado.value || null,
-      limit: LIMIT,
-      offset: pedidos.value.length,
-    })
+    const r = await obtenerHistorial(props.local.id, args(pedidos.value.length))
     pedidos.value = pedidos.value.concat(r.pedidos)
     total.value = r.total
   } catch (e) {
@@ -109,17 +100,9 @@ const ESTADO_CLS = {
     </div>
 
     <div class="flex flex-wrap items-center gap-3">
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="p in PERIODOS"
-          :key="p[0]"
-          type="button"
-          @click="periodo = p[0]"
-          :class="['chip', periodo === p[0] && 'chip-active']"
-        >
-          {{ p[1] }}
-        </button>
-      </div>
+      <select v-model="periodo" class="input w-auto">
+        <option v-for="o in OPCIONES" :key="o.id" :value="o.id">{{ o.label }}</option>
+      </select>
       <select v-model="estado" class="input w-52">
         <option v-for="e in ESTADOS" :key="e[0]" :value="e[0]">{{ e[1] }}</option>
       </select>

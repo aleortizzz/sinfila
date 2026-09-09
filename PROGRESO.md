@@ -387,6 +387,30 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Filtro de período por mes (2026-09-09)
+
+Pedido del usuario: en vez de "7 días / 30 días / 90 días", filtrar **por
+mes**, y que el cambio "impacte en todo, que funcione en todos lados por
+igual".
+
+- **`src/lib/periodos.js`** (NUEVO, un solo lugar): `opcionesPeriodo()`
+  arma la lista del `<select>` — Hoy · Últimos 7 días · los últimos 12
+  meses (`mes:2026-09`, etc.) · Desde el inicio. `periodoPorDefecto()` = el
+  mes en curso. `rangoPeriodo(id)` traduce a `{ desde, hasta, prevDesde,
+  prevHasta }` en `YYYY-MM-DD` (o `null` = desde que abrió el local / sin
+  comparación). Un mes en curso corta `hasta` en hoy.
+- Migración `20260910100000_reportes_rango.sql`: `reporte_local` e
+  `historial_pedidos` pasan de `p_dias int` a **rango de fechas explícito**
+  (`p_desde` / `p_hasta`, null = desde `locales.created_at`). `reporte_local`
+  recibe además `p_prev_desde` / `p_prev_hasta` para el delta vs período
+  anterior. Se dropearon las firmas viejas.
+- `lib/admin.js`: `obtenerReporte(localId, { desde, hasta, prevDesde,
+  prevHasta })` y `obtenerHistorial(localId, { desde, hasta, estado,
+  limit, offset })`.
+- `AdminReportes.vue` y `AdminHistorial.vue`: chips de período →
+  `<select>` con `opcionesPeriodo()`, arranca en el mes en curso, ambos
+  usan `rangoPeriodo()`. Misma lógica, mismo helper.
+
 ## Reportes v3 + detalle de pedido + sidebar mobile (2026-09-09)
 
 - **Datos demo**: 338 pedidos ficticios sobre 35 días en `bar-de-prueba`
