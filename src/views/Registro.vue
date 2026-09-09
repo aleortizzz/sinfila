@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { obtenerSesion, registrarUsuario, registrarNegocio, miLocal } from '../lib/auth'
+import PasswordInput from '../components/PasswordInput.vue'
 
 const router = useRouter()
 
@@ -14,6 +15,7 @@ const avisoMail = ref(false)
 const form = reactive({
   email: '',
   password: '',
+  password2: '',
   nombre: '',
   slug: '',
   slugTocado: false,
@@ -47,6 +49,16 @@ onMounted(async () => {
 
 async function enviar() {
   error.value = null
+  if (!yaLogueado.value) {
+    if (form.password.length < 6) {
+      error.value = 'La contraseña tiene que tener al menos 6 caracteres.'
+      return
+    }
+    if (form.password !== form.password2) {
+      error.value = 'Las contraseñas no coinciden.'
+      return
+    }
+  }
   if (!form.nombre.trim()) {
     error.value = 'Poné el nombre de tu local.'
     return
@@ -103,13 +115,8 @@ async function enviar() {
           <form @submit.prevent="enviar" class="mt-6 space-y-3">
             <template v-if="!yaLogueado">
               <input v-model="form.email" type="email" placeholder="Tu email" autocomplete="email" class="input" />
-              <input
-                v-model="form.password"
-                type="password"
-                placeholder="Contraseña"
-                autocomplete="new-password"
-                class="input"
-              />
+              <PasswordInput v-model="form.password" placeholder="Contraseña" autocomplete="new-password" />
+              <PasswordInput v-model="form.password2" placeholder="Repetí la contraseña" autocomplete="new-password" />
               <div class="h-px bg-slate-100" />
             </template>
 

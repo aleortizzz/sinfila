@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { iniciarSesion, soySuperAdmin, miLocal, reenviarVerificacion } from '../lib/auth'
+import PasswordInput from '../components/PasswordInput.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,14 +29,8 @@ async function enviar() {
     const l = await miLocal()
     router.replace(l?.locales?.slug ? `/panel/${l.locales.slug}/admin` : '/registro')
   } catch (e) {
-    const msg = (e.message || '').toLowerCase()
-    if (msg.includes('not confirmed') || msg.includes('not verified')) {
-      mailSinVerificar.value = true
-    } else if (msg.includes('invalid login credentials')) {
-      error.value = 'Email o contraseña incorrectos.'
-    } else {
-      error.value = e.message
-    }
+    if (e.code === 'email_no_verificado') mailSinVerificar.value = true
+    else error.value = e.message
   } finally {
     cargando.value = false
   }
@@ -62,13 +57,7 @@ async function reenviar() {
 
         <form @submit.prevent="enviar" class="mt-6 space-y-3">
           <input v-model="email" type="email" placeholder="Email" autocomplete="username" class="input" />
-          <input
-            v-model="password"
-            type="password"
-            placeholder="Contraseña"
-            autocomplete="current-password"
-            class="input"
-          />
+          <PasswordInput v-model="password" placeholder="Contraseña" autocomplete="current-password" />
 
           <div v-if="mailSinVerificar" class="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
             <p class="font-semibold">Todavía no verificaste tu mail</p>
