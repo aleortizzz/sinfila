@@ -13,6 +13,7 @@ import { useCartStore } from '../stores/cart'
 import ProductoCard from '../components/ProductoCard.vue'
 import ComboCard from '../components/ComboCard.vue'
 import CarritoResumen from '../components/CarritoResumen.vue'
+import InstalarApp from '../components/InstalarApp.vue'
 
 const route = useRoute()
 const cart = useCartStore()
@@ -260,6 +261,8 @@ onBeforeUnmount(() => observer?.disconnect())
           </div>
         </div>
       </header>
+
+      <InstalarApp />
 
       <!-- Aviso de local cerrado -->
       <div v-if="!abierto" class="mx-auto mt-4 max-w-5xl px-5">
