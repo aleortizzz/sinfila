@@ -27,6 +27,29 @@ export async function obtenerReporte(localId, dias = 30) {
   return data // { serie:[{fecha,pedidos,ventas}], top:[{nombre,unidades,monto}], recientes:[...] } | null
 }
 
+// Más vendidos de un rango (para filtrar por el día clickeado en el gráfico).
+export async function obtenerTopProductos(localId, desde, hasta) {
+  const { data, error } = await supabase.rpc('top_productos_local', {
+    p_local_id: localId,
+    p_desde: desde,
+    p_hasta: hasta,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function obtenerHistorial(localId, { dias = 30, estado = null, limit = 50, offset = 0 } = {}) {
+  const { data, error } = await supabase.rpc('historial_pedidos', {
+    p_local_id: localId,
+    p_dias: dias,
+    p_estado: estado,
+    p_limit: limit,
+    p_offset: offset,
+  })
+  if (error) throw error
+  return data ?? { total: 0, pedidos: [] }
+}
+
 // --- Config del local ---
 // El dueño tiene UPDATE columna por columna sobre "locales" (ver los GRANT
 // en la migración base): puede tocar nombre/horarios/branding/pago/delivery

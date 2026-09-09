@@ -387,6 +387,24 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Reportes v2 + Historial (2026-09-09)
+
+Migración `20260909170000_reportes_v2.sql`:
+- `top_productos_local(local, desde, hasta)` — más vendidos de un rango
+  arbitrario.
+- `historial_pedidos(local, dias, estado, limit, offset)` — tabla de
+  pedidos con filtro de período/estado, paginada; acá SÍ entran
+  rechazados/cancelados.
+
+- `AdminReportes`: más padding a la izquierda del gráfico (números de 7-8
+  dígitos ya no se pisan). Las **barras son clickeables** → filtran "Más
+  vendidos" a ese día (barra seleccionada en negro + "Ver todo el
+  período"). Se sacó la tabla "Últimos pedidos".
+- `AdminHistorial.vue` en `/panel/:slug/admin/historial` + ítem "Historial"
+  en el sidebar. Chips de período + select de estado + "Cargar más"
+  (offset). Tabla: #, fecha, cliente+tel, entrega+barrio, pago, ítems,
+  total, estado.
+
 ## Reportes (2026-09-09)
 
 Migraciones `20260909150000_reporte_local.sql` +

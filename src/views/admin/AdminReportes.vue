@@ -1,15 +1,22 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { obtenerReporte } from '../../lib/admin'
+import { useRoute } from 'vue-router'
+import { obtenerReporte, obtenerTopProductos } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
 
 const props = defineProps({ local: Object })
+const route = useRoute()
 
 const cargando = ref(true)
 const error = ref(null)
 const data = ref(null)
 const metrica = ref('ventas') // 'ventas' | 'pedidos'
 const periodo = ref(30) // 7 / 30 / 90 / 0 (desde el inicio)
+
+// Día elegido en el gráfico → filtra "Más vendidos" a ese día.
+const diaSel = ref(null)
+const topDia = ref([])
+const cargandoTop = ref(false)
 
 const PERIODOS = [
   [7, '7 días'],
@@ -36,6 +43,7 @@ watch(periodo, () => {
 async function cargar() {
   cargando.value = true
   error.value = null
+  diaSel.value = null
   try {
     data.value = await obtenerReporte(props.local.id, periodo.value)
   } catch (e) {
@@ -45,9 +53,25 @@ async function cargar() {
   }
 }
 
+async function seleccionarDia(d) {
+  if (diaSel.value === d.fecha) {
+    diaSel.value = null
+    return
+  }
+  diaSel.value = d.fecha
+  cargandoTop.value = true
+  try {
+    topDia.value = await obtenerTopProductos(props.local.id, d.fecha, d.fecha)
+  } catch {
+    topDia.value = []
+  } finally {
+    cargandoTop.value = false
+  }
+}
+
 const serie = computed(() => data.value?.serie ?? [])
 const top = computed(() => data.value?.top ?? [])
-const recientes = computed(() => data.value?.recientes ?? [])
+const topMostrado = computed(() => (diaSel.value ? topDia.value : top.value))
 
 const totalPedidos = computed(() => serie.value.reduce((s, d) => s + d.pedidos, 0))
 const totalVentas = computed(() => serie.value.reduce((s, d) => s + Number(d.ventas), 0))
@@ -136,6 +160,7 @@ const rangoReal = computed(() => {
       <p class="mt-1 text-xs text-slate-400">
         {{ metrica === 'ventas' ? 'Cuánto facturaste cada día ($).' : 'Cuántos pedidos entraron cada día.' }}
         <span v-if="diaPico"> · Pico: {{ valorDia(diaPico) }} el {{ dm(diaPico.fecha) }}.</span>
+        · Tocá un día para ver qué se vendió.
       </p>
 
       <!-- Gráfico con escala -->
@@ -149,10 +174,19 @@ const rangoReal = computed(() => {
           <span class="absolute -top-2 left-0 bg-white pr-1 text-[10px] text-slate-400">{{ g.label }}</span>
         </div>
 
-        <div class="absolute inset-0 flex items-end gap-1 pl-12">
-          <div v-for="d in serie" :key="d.fecha" class="group flex h-full flex-1 items-end">
+        <div class="absolute inset-0 flex items-end gap-1 pl-20">
+          <button
+            v-for="d in serie"
+            :key="d.fecha"
+            type="button"
+            @click="seleccionarDia(d)"
+            class="group flex h-full flex-1 items-end"
+          >
             <div
-              class="relative min-h-[3px] w-full rounded-t bg-brand-500/80 transition group-hover:bg-brand-500"
+              :class="[
+                'relative min-h-[3px] w-full rounded-t transition',
+                diaSel === d.fecha ? 'bg-slate-900' : 'bg-brand-500/80 group-hover:bg-brand-500',
+              ]"
               :style="{ height: altura(d) + '%' }"
             >
               <div
@@ -161,10 +195,10 @@ const rangoReal = computed(() => {
                 {{ dm(d.fecha) }} · {{ valorDia(d) }}
               </div>
             </div>
-          </div>
+          </button>
         </div>
       </div>
-      <div class="mt-1.5 flex justify-between pl-12 text-[11px] text-slate-400">
+      <div class="mt-1.5 flex justify-between pl-20 text-[11px] text-slate-400">
         <span>{{ serie.length ? dm(serie[0].fecha) : '' }}</span>
         <span>{{ serie.length ? dm(serie[Math.floor(serie.length / 2)].fecha) : '' }}</span>
         <span>{{ serie.length ? dm(serie[serie.length - 1].fecha) : 'hoy' }}</span>
@@ -173,7 +207,20 @@ const rangoReal = computed(() => {
 
     <!-- Top productos -->
     <div class="card p-5">
-      <p class="label">Más vendidos</p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="label">
+          Más vendidos<span v-if="diaSel" class="text-slate-400"> · {{ dm(diaSel) }}</span>
+        </p>
+        <button
+          v-if="diaSel"
+          type="button"
+          @click="diaSel = null"
+          class="text-xs font-medium text-slate-500 hover:text-slate-900"
+        >
+          Ver todo el período
+        </button>
+      </div>
+
       <table class="mt-3 w-full text-sm">
         <thead>
           <tr class="border-b border-slate-200 text-left text-xs text-slate-400">
@@ -183,55 +230,33 @@ const rangoReal = computed(() => {
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          <tr v-for="t in top" :key="t.nombre">
+          <tr v-for="t in topMostrado" :key="t.nombre">
             <td class="py-2 text-slate-900">{{ t.nombre }}</td>
             <td class="py-2 text-right font-medium text-slate-900">{{ t.unidades }}</td>
             <td class="py-2 text-right text-slate-600">{{ pesos(t.monto) }}</td>
           </tr>
-          <tr v-if="!top.length">
-            <td colspan="3" class="py-3 text-slate-400">Todavía no hay ventas.</td>
+          <tr v-if="cargandoTop">
+            <td colspan="3" class="py-3 text-slate-400">Cargando…</td>
+          </tr>
+          <tr v-else-if="!topMostrado.length">
+            <td colspan="3" class="py-3 text-slate-400">
+              {{ diaSel ? 'Ese día no hubo ventas.' : 'Todavía no hay ventas.' }}
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Últimos pedidos -->
-    <div class="card p-5">
-      <p class="label">Últimos pedidos</p>
-      <div class="mt-3 overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-slate-200 text-left text-xs text-slate-400">
-              <th class="pb-2 pr-3 font-medium">#</th>
-              <th class="pb-2 pr-3 font-medium">Fecha</th>
-              <th class="pb-2 pr-3 font-medium">Cliente</th>
-              <th class="pb-2 pr-3 text-right font-medium">Ítems</th>
-              <th class="pb-2 pr-3 font-medium">Pago</th>
-              <th class="pb-2 pr-3 text-right font-medium">Total</th>
-              <th class="pb-2 font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="p in recientes" :key="p.numero">
-              <td class="py-2 pr-3 font-bold text-slate-900">#{{ p.numero }}</td>
-              <td class="whitespace-nowrap py-2 pr-3 text-slate-500">{{ fechaHora(p.created_at) }}</td>
-              <td class="py-2 pr-3 text-slate-900">{{ p.nombre_cliente }}</td>
-              <td class="py-2 pr-3 text-right text-slate-600">{{ p.items }}</td>
-              <td class="py-2 pr-3 text-slate-500">{{ p.metodo_pago === 'efectivo' ? 'Efectivo' : 'Transf.' }}</td>
-              <td class="py-2 pr-3 text-right font-medium text-slate-900">{{ pesos(p.total) }}</td>
-              <td class="py-2">
-                <span :class="['rounded-full px-2 py-0.5 text-[11px] font-medium', ESTADO[p.estado] ?? 'bg-slate-100 text-slate-600']">
-                  {{ p.estado.replace('_', ' ') }}
-                </span>
-              </td>
-            </tr>
-            <tr v-if="!recientes.length">
-              <td colspan="7" class="py-3 text-slate-400">Todavía no hay pedidos.</td>
-            </tr>
-          </tbody>
-        </table>
+    <RouterLink
+      :to="`/panel/${route.params.slug}/admin/historial`"
+      class="card flex items-center justify-between p-5 transition hover:border-brand-300 hover:shadow-md"
+    >
+      <div>
+        <p class="text-base font-semibold text-slate-900">Historial de pedidos</p>
+        <p class="mt-1 text-sm text-slate-500">Todos los pedidos, con filtros de fecha y estado.</p>
       </div>
-    </div>
+      <span class="text-sm font-medium t-brand">Abrir →</span>
+    </RouterLink>
     </template>
   </section>
 </template>
