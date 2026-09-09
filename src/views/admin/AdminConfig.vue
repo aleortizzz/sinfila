@@ -327,9 +327,9 @@ async function aplicarAjustePorcentaje() {
             :url="form.banner_url"
             :subiendo="subiendoBanner"
             :error="errorBanner"
-            ratio="aspect-[3/1]"
-            recomendado="1920 × 640 px (apaisada, 3:1)"
-            nota="Con esa medida se ve completa. En celular se recorta un poco a los lados, así que poné lo importante al centro."
+            ratio="aspect-[4/1]"
+            recomendado="1920 × 480 px (proporción 4:1)"
+            nota="Con esa proporción se ve completa en la compu. En celular se recorta un poco a los lados — dejá lo importante al centro."
             @elegir="(f) => onImagen(f, 'banner')"
             @quitar="form.banner_url = ''"
           />
