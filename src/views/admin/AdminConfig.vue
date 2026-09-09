@@ -54,17 +54,21 @@ const seccion = ref('general')
 
 const subiendoLogo = ref(false)
 const subiendoBanner = ref(false)
+const errorLogo = ref('')
+const errorBanner = ref('')
 
 async function onImagen(file, prefijo) {
-  const flag = prefijo === 'logo' ? subiendoLogo : subiendoBanner
+  const esLogo = prefijo === 'logo'
+  const flag = esLogo ? subiendoLogo : subiendoBanner
+  const err = esLogo ? errorLogo : errorBanner
   flag.value = true
-  errorGuardar.value = null
+  err.value = ''
   try {
     const url = await subirImagen('locales', props.local.id, file, prefijo)
-    if (prefijo === 'logo') form.logo_url = url
+    if (esLogo) form.logo_url = url
     else form.banner_url = url
   } catch (e) {
-    errorGuardar.value = e.message
+    err.value = e.message
   } finally {
     flag.value = false
   }
@@ -310,6 +314,7 @@ async function aplicarAjustePorcentaje() {
           <ImageUpload
             :url="form.logo_url"
             :subiendo="subiendoLogo"
+            :error="errorLogo"
             ratio="aspect-square"
             recomendado="400 × 400 px (cuadrada)"
             @elegir="(f) => onImagen(f, 'logo')"
@@ -321,8 +326,10 @@ async function aplicarAjustePorcentaje() {
           <ImageUpload
             :url="form.banner_url"
             :subiendo="subiendoBanner"
-            ratio="aspect-video"
-            recomendado="1600 × 600 px (horizontal)"
+            :error="errorBanner"
+            ratio="aspect-[3/1]"
+            recomendado="1920 × 640 px (bien apaisada, 3:1)"
+            nota="Se recorta arriba y abajo según la pantalla — poné lo importante al centro. No sirve un logo cuadrado."
             @elegir="(f) => onImagen(f, 'banner')"
             @quitar="form.banner_url = ''"
           />

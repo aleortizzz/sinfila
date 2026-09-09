@@ -21,6 +21,18 @@ export async function subirImagen(carpeta, localId, archivo, prefijo) {
     cacheControl: '3600',
     upsert: true,
   })
-  if (error) throw new Error(error.message)
+  if (error) {
+    const m = (error.message || '').toLowerCase()
+    if (m.includes('maximum allowed size') || m.includes('too large') || m.includes('payload')) {
+      throw new Error('La imagen supera el tamaño máximo (5 MB).')
+    }
+    if (m.includes('mime') || m.includes('not supported') || m.includes('invalid_mime')) {
+      throw new Error('Ese formato de imagen no está permitido. Usá JPG, PNG o WEBP.')
+    }
+    if (m.includes('row-level security') || m.includes('not authorized') || m.includes('unauthorized')) {
+      throw new Error('No tenés permiso para subir imágenes a este local.')
+    }
+    throw new Error('No se pudo subir la imagen. ' + error.message)
+  }
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }

@@ -46,13 +46,14 @@ const nuevoGrupo = reactive({ nombre: '', obligatorio: true })
 const nuevaOpcion = reactive({}) // { [grupoId]: { nombre, precioAjuste } }
 
 const subiendoFoto = ref(false)
+const errorFoto = ref('')
 async function onFoto(file) {
   subiendoFoto.value = true
-  estado.value = null
+  errorFoto.value = ''
   try {
     form.foto_url = await subirImagen('productos', props.local.id, file, 'foto')
   } catch (e) {
-    estado.value = { ok: false, msg: e.message }
+    errorFoto.value = e.message
   } finally {
     subiendoFoto.value = false
   }
@@ -238,7 +239,8 @@ function volver() {
         <ImageUpload
           :url="form.foto_url"
           :subiendo="subiendoFoto"
-          ratio="aspect-square"
+          :error="errorFoto"
+          ratio="aspect-[4/3]"
           recomendado="800 × 600 px (4:3)"
           @elegir="onFoto"
           @quitar="form.foto_url = ''"
