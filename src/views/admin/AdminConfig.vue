@@ -328,8 +328,8 @@ async function aplicarAjustePorcentaje() {
             :subiendo="subiendoBanner"
             :error="errorBanner"
             ratio="aspect-[3/1]"
-            recomendado="1920 × 640 px (bien apaisada, 3:1)"
-            nota="Se recorta arriba y abajo según la pantalla — poné lo importante al centro. No sirve un logo cuadrado."
+            recomendado="1920 × 640 px (apaisada, 3:1)"
+            nota="Con esa medida se ve completa. En celular se recorta un poco a los lados, así que poné lo importante al centro."
             @elegir="(f) => onImagen(f, 'banner')"
             @quitar="form.banner_url = ''"
           />
