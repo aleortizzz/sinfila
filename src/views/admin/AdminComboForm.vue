@@ -10,6 +10,8 @@ import {
   quitarItemCombo,
 } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
+import { subirImagen } from '../../lib/storage'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 const props = defineProps({ local: Object })
 const route = useRoute()
@@ -24,7 +26,21 @@ const guardando = ref(false)
 const estado = ref(null)
 
 const productos = ref([])
-const form = reactive({ nombre: '', descripcion: '', estacion: 'barra', precio: '', disponible: false })
+const form = reactive({ nombre: '', descripcion: '', estacion: 'barra', precio: '', foto_url: '', disponible: false })
+
+const subiendoFoto = ref(false)
+const errorFoto = ref('')
+async function onFoto(file) {
+  subiendoFoto.value = true
+  errorFoto.value = ''
+  try {
+    form.foto_url = await subirImagen('combos', props.local.id, file, 'foto')
+  } catch (e) {
+    errorFoto.value = e.message
+  } finally {
+    subiendoFoto.value = false
+  }
+}
 
 // Ítems del combo. En "nuevo" son un borrador local; en "edición" son filas
 // reales de combo_items (alta/baja inmediata).
@@ -75,6 +91,7 @@ async function cargar() {
       form.descripcion = c.descripcion ?? ''
       form.estacion = c.estacion
       form.precio = c.precio
+      form.foto_url = c.foto_url ?? ''
       form.disponible = c.disponible
       items.value = (c.combo_items ?? []).map((ci) => ({
         id: ci.id,
@@ -144,6 +161,7 @@ async function guardar() {
     descripcion: form.descripcion.trim() || null,
     estacion: form.estacion,
     precio: Number(form.precio),
+    foto_url: form.foto_url.trim() || null,
   }
   try {
     if (esNuevo.value) {
@@ -188,6 +206,20 @@ function volver() {
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Descripción</label>
         <input v-model="form.descripcion" type="text" class="input" placeholder="Opcional" />
+      </div>
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">
+          Foto <span class="font-normal text-slate-400">(opcional)</span>
+        </label>
+        <ImageUpload
+          :url="form.foto_url"
+          :subiendo="subiendoFoto"
+          :error="errorFoto"
+          ratio="aspect-[4/3]"
+          recomendado="800 × 600 px (4:3)"
+          @elegir="onFoto"
+          @quitar="form.foto_url = ''"
+        />
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Estación</label>

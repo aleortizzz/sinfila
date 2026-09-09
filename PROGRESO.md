@@ -421,6 +421,11 @@ el admin: el combo toma lo que ya tengan sus productos.
   "Gaseosa: Coca" en vez de solo "Coca".
 - `AdminComboForm.vue`: cada producto del combo con variantes muestra un
   tag "con variantes" + nota aclaratoria (no cambian el precio).
+- **Fix**: el form del combo no tenía campo de foto (la tabla y `ComboCard`
+  ya soportaban `foto_url`). Se agregó `<ImageUpload>` igual que en
+  productos, subiendo a `combos/<local_id>/foto-<ts>` en el bucket
+  `imagenes` (la policy de storage solo valida el 2º segmento = local_id,
+  así que la carpeta `combos/` no necesitó cambios).
 
 ## Reportes: filtro por categoría (2026-09-09)
 
