@@ -221,20 +221,23 @@ onBeforeUnmount(() => observer?.disconnect())
 
     <template v-else>
       <!-- Hero / banner -->
-      <header class="relative">
-        <div class="aspect-[2/1] w-full overflow-hidden bg-slate-200 sm:aspect-auto sm:h-[clamp(13rem,38vh,23rem)]">
-          <img
-            v-if="local.banner_url"
-            :src="local.banner_url"
-            alt=""
-            class="h-full w-full object-cover object-center"
-          />
-          <div
-            v-else
-            class="h-full w-full"
-            style="background: linear-gradient(135deg, var(--brand), #1a1613)"
-          />
-          <div class="pointer-events-none absolute inset-0 bg-linear-to-t from-transparent to-black/25" />
+      <header>
+        <!-- Contenido (no full-bleed): así una imagen 3:1 entra exacta, sin
+             recortes verticales, y no ocupa media pantalla en desktop. -->
+        <div class="mx-auto max-w-5xl sm:px-5 sm:pt-4">
+          <div class="relative aspect-[5/2] w-full overflow-hidden bg-slate-200 sm:aspect-[3/1] sm:rounded-2xl">
+            <img
+              v-if="local.banner_url"
+              :src="local.banner_url"
+              alt=""
+              class="h-full w-full object-cover object-center"
+            />
+            <div
+              v-else
+              class="h-full w-full"
+              style="background: linear-gradient(135deg, var(--brand), #1a1613)"
+            />
+          </div>
         </div>
 
         <div class="mx-auto max-w-5xl px-5">
