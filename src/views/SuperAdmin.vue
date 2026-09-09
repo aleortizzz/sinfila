@@ -116,9 +116,13 @@ const fecha = (d) => (d ? new Date(d).toLocaleDateString('es-AR') : '—')
                     {{ ESTADOS[l.estado]?.txt ?? l.estado }}
                   </span>
                 </div>
-                <p class="text-xs text-slate-500">
-                  {{ l.negocio_nombre }} · {{ l.email_contacto }} ·
-                  <RouterLink :to="`/${l.slug}`" class="underline" target="_blank">/{{ l.slug }}</RouterLink>
+                <p class="text-xs text-slate-500">{{ l.negocio_nombre }} · {{ l.email_contacto }}</p>
+                <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+                  <RouterLink :to="`/${l.slug}`" target="_blank" class="text-slate-500 underline hover:text-slate-900">
+                    Ver carta ↗
+                  </RouterLink>
+                  <RouterLink :to="`/panel/${l.slug}/admin`" class="t-brand hover:underline">Panel</RouterLink>
+                  <RouterLink :to="`/panel/${l.slug}`" class="t-brand hover:underline">KDS</RouterLink>
                 </p>
                 <p class="mt-1 text-xs text-slate-400">
                   <span v-if="l.trial_hasta">Prueba hasta {{ fecha(l.trial_hasta) }} · </span>

@@ -2,15 +2,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink, RouterView } from 'vue-router'
 import { obtenerLocalPorSlug } from '../../lib/locales'
-import { cerrarSesion } from '../../lib/auth'
+import { cerrarSesion, soySuperAdmin } from '../../lib/auth'
 
 const route = useRoute()
 const router = useRouter()
 const local = ref(null)
 const cargado = ref(false)
+const esSuper = ref(false)
 
 onMounted(async () => {
-  local.value = await obtenerLocalPorSlug(route.params.slug)
+  const [l, s] = await Promise.all([obtenerLocalPorSlug(route.params.slug), soySuperAdmin()])
+  local.value = l
+  esSuper.value = s
   cargado.value = true
 })
 
@@ -92,7 +95,10 @@ async function salir() {
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">⏳</div>
       <h1 class="mt-3 text-xl font-bold text-slate-900">{{ bloqueo.titulo }}</h1>
       <p class="mt-2 text-sm text-slate-500">{{ bloqueo.texto }}</p>
-      <button type="button" @click="salir" class="btn btn-ghost mt-5">Cerrar sesión</button>
+      <div class="mt-5 flex justify-center gap-2">
+        <RouterLink v-if="esSuper" to="/superadmin" class="btn btn-dark">Ir a super-admin</RouterLink>
+        <button type="button" @click="salir" class="btn btn-ghost">Cerrar sesión</button>
+      </div>
     </div>
   </div>
 
@@ -139,6 +145,17 @@ async function salir() {
       </nav>
 
       <div class="mt-auto flex flex-col gap-1">
+        <RouterLink
+          v-if="esSuper"
+          to="/superadmin"
+          class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-slate-100"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-5 w-5 shrink-0">
+            <path d="M12 3l7.5 3v5.25c0 4.5-3 7.5-7.5 9-4.5-1.5-7.5-4.5-7.5-9V6L12 3z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Super-admin
+        </RouterLink>
+
         <a
           :href="`/${route.params.slug}`"
           target="_blank"
