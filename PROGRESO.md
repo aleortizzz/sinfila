@@ -387,6 +387,26 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## PWA instalable (2026-09-09)
+
+`vite-plugin-pwa` (Workbox). Genera `sw.js` (precache de assets + CacheFirst
+para las fuentes de Google), inyecta `manifest.webmanifest` y el
+`registerSW`. `registerType: autoUpdate` (se actualiza solo en cada deploy).
+
+- Manifest: name/short_name "SinFila", `display: standalone`, portrait,
+  `theme_color #f5401f`, `background_color #faf7f2`. Iconos 192 y 512 +
+  maskable 512 (cuadrado rojo con la "S", rasterizados de un SVG con Edge
+  headless, en `public/`).
+- `index.html`: `theme-color`, `apple-touch-icon`, metas
+  `apple-mobile-web-app-*`, `viewport-fit=cover`.
+- `public/.htaccess`: `AddType application/manifest+json .webmanifest`.
+- `components/InstalarApp.vue`: barra "Instalar" en la carta cuando el
+  navegador dispara `beforeinstallprompt` (Android/Chrome/Edge). El "ahora
+  no" se recuerda en localStorage. iOS: Compartir → Agregar a inicio (el
+  manifest le da nombre/icono/standalone).
+- Requiere HTTPS → funciona en `sinfila.tizdigital.com`, no en `localhost`
+  salvo `127.0.0.1`.
+
 ## Subir imágenes a Storage (2026-09-09)
 
 Migración `20260909130000`: bucket público `imagenes` (5 MB, mime image/*).
