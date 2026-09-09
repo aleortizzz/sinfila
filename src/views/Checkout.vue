@@ -274,7 +274,7 @@ async function confirmar() {
             <div class="min-w-0">
               <p class="truncate font-medium text-slate-900">{{ item.nombre }}</p>
               <p v-if="item.opciones.length" class="truncate text-xs text-slate-500">
-                {{ item.opciones.map((o) => o.opcionNombre).join(', ') }}
+                {{ item.opciones.map((o) => (o.productoNombre ? `${o.productoNombre}: ${o.opcionNombre}` : o.opcionNombre)).join(' · ') }}
               </p>
             </div>
             <div class="flex shrink-0 items-center gap-3">

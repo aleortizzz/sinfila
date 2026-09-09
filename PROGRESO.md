@@ -387,6 +387,41 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Hito C — variantes de producto dentro de un combo (2026-09-09)
+
+Un combo **hereda** los grupos de opciones de los productos que lo
+componen. El cliente elige la variante al agregar el combo (ej. "combo con
+gaseosa" → elegís el sabor). **El precio del combo no cambia** con la
+variante (oferta de precio cerrado). Se elige una vez por producto (si el
+combo lleva "2 Speed", va un solo sabor para los dos). Sin config nueva en
+el admin: el combo toma lo que ya tengan sus productos.
+
+- Migración `20260910160000_variantes_en_combo.sql`:
+  - `resolver_opciones_combo(p_combo_id, p_opcion_ids uuid[], p_estricto)` —
+    recorre los grupos de cada producto del combo, matchea las opciones que
+    mandó el cliente (validando `disponible` y pertenencia real), y devuelve
+    el snapshot `[{producto, grupo, opcion, precio_ajuste: 0}]`. Con
+    `p_estricto` exige los grupos obligatorios.
+  - `crear_pedido`: el ítem `combo` ahora llama a `resolver_opciones_combo`
+    y guarda el snapshot en `pedido_items.opciones_elegidas`. El precio
+    sigue siendo `combos.precio`.
+  - `previsualizar_pedido` no cambia (el precio del combo no depende de la
+    variante).
+- `lib/locales.js` `obtenerMenu`: la query de combos trae los
+  `grupos_opciones`/`opciones` de cada producto. Helper `limpiarGrupos`
+  compartido con productos (ordena, filtra opciones no disponibles, tira
+  grupos vacíos).
+- `ComboCard.vue`: si algún producto del combo tiene variantes, muestra un
+  bloque por producto con chips de opción (igual que `ProductoCard`).
+  Manda `opciones` a `cart.agregar` con `precioAjuste: 0`. Sin variantes →
+  se agrega de una como antes. La clave de línea del carrito ya separa por
+  `opcionId`, así "Combo + Coca" y "Combo + Sprite" son líneas distintas.
+- KDS (`Local.vue`), `PedidoDetalleModal.vue`, resumen del `Checkout.vue`:
+  cuando la opción tiene `producto` (viene de un combo), se muestra
+  "Gaseosa: Coca" en vez de solo "Coca".
+- `AdminComboForm.vue`: cada producto del combo con variantes muestra un
+  tag "con variantes" + nota aclaratoria (no cambian el precio).
+
 ## Reportes: filtro por categoría (2026-09-09)
 
 Pedido del usuario: ver por período cómo se movió una categoría (p. ej.

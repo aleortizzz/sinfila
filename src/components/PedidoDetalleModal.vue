@@ -96,7 +96,7 @@ const ESTADO_TXT = {
                 <div class="min-w-0">
                   <p class="text-slate-900"><span class="font-semibold">{{ it.cantidad }}×</span> {{ it.nombre }}</p>
                   <p v-if="it.opciones && it.opciones.length" class="text-xs text-slate-500">
-                    {{ it.opciones.map((o) => o.opcion).join(', ') }}
+                    {{ it.opciones.map((o) => (o.producto ? `${o.producto}: ${o.opcion}` : o.opcion)).join(', ') }}
                   </p>
                   <p v-if="Number(it.descuento_aplicado) > 0" class="text-xs text-green-600">
                     promo −{{ pesos(Number(it.descuento_aplicado) * it.cantidad) }}

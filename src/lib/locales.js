@@ -78,7 +78,9 @@ export async function obtenerMenu(localId) {
       .from('combos')
       .select(
         `id, nombre, descripcion, precio, foto_url, estacion, orden,
-         combo_items ( cantidad, productos ( precio ) )`,
+         combo_items ( cantidad, productos ( id, nombre, precio, orden,
+           grupos_opciones ( id, nombre, obligatorio, orden,
+             opciones ( id, nombre, precio_ajuste, orden, disponible ) ) ) )`,
       )
       .eq('local_id', localId)
       .eq('disponible', true)
@@ -92,9 +94,8 @@ export async function obtenerMenu(localId) {
   // a las relaciones embebidas, solo a la tabla principal).
   // Solo opciones disponibles llegan a la carta, y descartamos grupos que
   // quedaron sin ninguna (ej. se agotaron todas las opciones).
-  const productos = (productosRes.data ?? []).map((p) => ({
-    ...p,
-    grupos_opciones: [...(p.grupos_opciones ?? [])]
+  const limpiarGrupos = (grupos) =>
+    [...(grupos ?? [])]
       .sort((a, b) => a.orden - b.orden)
       .map((g) => ({
         ...g,
@@ -102,12 +103,31 @@ export async function obtenerMenu(localId) {
           .filter((o) => o.disponible)
           .sort((a, b) => a.orden - b.orden),
       }))
-      .filter((g) => g.opciones.length > 0),
+      .filter((g) => g.opciones.length > 0)
+
+  const productos = (productosRes.data ?? []).map((p) => ({
+    ...p,
+    grupos_opciones: limpiarGrupos(p.grupos_opciones),
+  }))
+
+  // En cada combo, ordenamos sus productos y les limpiamos los grupos de
+  // opciones igual que a los productos sueltos (la carta usa esto para dejar
+  // elegir la variante de cada parte del combo).
+  const combos = (combosRes.data ?? []).map((c) => ({
+    ...c,
+    combo_items: [...(c.combo_items ?? [])]
+      .map((ci) => ({
+        ...ci,
+        productos: ci.productos
+          ? { ...ci.productos, grupos_opciones: limpiarGrupos(ci.productos.grupos_opciones) }
+          : ci.productos,
+      }))
+      .sort((a, b) => (a.productos?.orden ?? 0) - (b.productos?.orden ?? 0)),
   }))
 
   return {
     categorias: categoriasRes.data ?? [],
     productos,
-    combos: combosRes.data ?? [],
+    combos,
   }
 }

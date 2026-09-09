@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useCartStore } from '../stores/cart'
 import { pesos } from '../lib/formato'
 
@@ -20,6 +20,42 @@ const precioSugerido = computed(() =>
 const hayDescuento = computed(() => precioSugerido.value > Number(props.combo.precio))
 const ahorro = computed(() => precioSugerido.value - Number(props.combo.precio))
 
+// Partes del combo que tienen variantes para elegir (ej. la gaseosa con
+// "Sabor"). Si ninguna tiene, el combo se agrega de una.
+const partesConOpciones = computed(() =>
+  (props.combo.combo_items ?? [])
+    .filter((ci) => (ci.productos?.grupos_opciones ?? []).length > 0)
+    .map((ci) => ci.productos),
+)
+
+// Selección actual por grupo: { [grupoId]: opcionId | null }.
+// Obligatorio → primera opción; opcional → sin elegir.
+const seleccion = reactive({})
+for (const prod of partesConOpciones.value) {
+  for (const g of prod.grupos_opciones) {
+    seleccion[g.id] = g.obligatorio && g.opciones.length ? g.opciones[0].id : null
+  }
+}
+
+function opcionesElegidas() {
+  const out = []
+  for (const prod of partesConOpciones.value) {
+    for (const g of prod.grupos_opciones) {
+      const opcion = g.opciones.find((o) => o.id === seleccion[g.id])
+      if (!opcion) continue // grupo opcional sin elegir
+      out.push({
+        grupoId: g.id,
+        grupoNombre: g.nombre,
+        opcionId: opcion.id,
+        opcionNombre: opcion.nombre,
+        productoNombre: prod.nombre,
+        precioAjuste: 0, // dentro de un combo la variante no ajusta el precio
+      })
+    }
+  }
+  return out
+}
+
 const agregado = ref(false)
 let t = null
 function agregar() {
@@ -31,6 +67,7 @@ function agregar() {
     // Los numeric de Postgres llegan como string por PostgREST.
     precioBase: Number(props.combo.precio),
     estacion: props.combo.estacion,
+    opciones: opcionesElegidas(),
   })
   agregado.value = true
   clearTimeout(t)
@@ -65,6 +102,39 @@ function agregar() {
       <p v-if="combo.descripcion" class="mt-0.5 line-clamp-2 text-sm text-slate-500">
         {{ combo.descripcion }}
       </p>
+
+      <!-- Variantes: un bloque por producto del combo que tenga para elegir. -->
+      <div v-for="prod in partesConOpciones" :key="prod.id" class="mt-3">
+        <p class="text-xs font-semibold text-slate-500">{{ prod.nombre }}</p>
+        <div v-for="g in prod.grupos_opciones" :key="g.id" class="mt-1.5">
+          <p class="text-xs font-medium text-slate-400">{{ g.nombre }}</p>
+          <div class="mt-1 flex flex-wrap gap-1.5">
+            <button
+              v-if="!g.obligatorio"
+              type="button"
+              @click="seleccion[g.id] = null"
+              :class="[
+                'rounded-full border px-2.5 py-1 text-xs font-medium transition',
+                seleccion[g.id] == null ? 'chip-active' : 'border-slate-300 text-slate-600 hover:border-slate-400',
+              ]"
+            >
+              Ninguna
+            </button>
+            <button
+              v-for="o in g.opciones"
+              :key="o.id"
+              type="button"
+              @click="seleccion[g.id] = o.id"
+              :class="[
+                'rounded-full border px-2.5 py-1 text-xs font-medium transition',
+                seleccion[g.id] === o.id ? 'chip-active' : 'border-slate-300 text-slate-600 hover:border-slate-400',
+              ]"
+            >
+              {{ o.nombre }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="mt-auto flex items-center justify-between pt-4">
         <div class="flex items-baseline gap-1.5">

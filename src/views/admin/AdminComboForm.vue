@@ -40,6 +40,14 @@ const disponiblesParaAgregar = computed(() => {
   return productos.value.filter((p) => !ya.has(p.id))
 })
 
+// ¿Este producto tiene variantes que el cliente va a poder elegir dentro
+// del combo? (grupos de opciones con al menos una opción disponible)
+function tieneVariantes(productoId) {
+  const p = productos.value.find((x) => x.id === productoId)
+  return (p?.grupos_opciones ?? []).some((g) => (g.opciones ?? []).some((o) => o.disponible))
+}
+const algunaVariante = computed(() => items.value.some((i) => tieneVariantes(i.producto_id)))
+
 let arrancado = false
 watch(
   () => props.local,
@@ -205,11 +213,19 @@ function volver() {
       <h2 class="label">Productos del combo</h2>
       <ul v-if="items.length" class="mt-2 divide-y divide-slate-100">
         <li v-for="(it, idx) in items" :key="it.id ?? idx" class="flex items-center justify-between py-2 text-sm">
-          <span>{{ it.cantidad }}× {{ it.nombre }} <span class="text-slate-400">({{ pesos(it.precio) }} c/u)</span></span>
+          <span>
+            {{ it.cantidad }}× {{ it.nombre }} <span class="text-slate-400">({{ pesos(it.precio) }} c/u)</span>
+            <span v-if="tieneVariantes(it.producto_id)" class="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+              con variantes
+            </span>
+          </span>
           <button type="button" @click="quitarItem(it, idx)" class="text-xs font-medium text-red-500 hover:text-red-700">Quitar</button>
         </li>
       </ul>
       <p v-else class="mt-2 text-sm text-slate-400">Todavía no elegiste productos.</p>
+      <p v-if="algunaVariante" class="mt-2 text-xs text-slate-400">
+        Los productos con variantes las va a poder elegir el cliente al agregar el combo. No cambian el precio.
+      </p>
 
       <div class="mt-3 flex flex-wrap gap-2">
         <select v-model="sel.producto_id" class="input flex-1">

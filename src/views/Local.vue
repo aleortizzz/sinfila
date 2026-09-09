@@ -252,7 +252,7 @@ async function salir() {
                 <li v-for="item in p.pedido_items" :key="item.id">
                   <span class="font-medium">{{ item.cantidad }}×</span> {{ item.nombre }}
                   <span v-if="item.opciones_elegidas?.length" class="text-xs text-slate-500">
-                    ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
+                    ({{ item.opciones_elegidas.map((o) => (o.producto ? `${o.producto}: ${o.opcion}` : o.opcion)).join(', ') }})
                   </span>
                   <span class="text-xs text-slate-400">· {{ item.estacion }}</span>
                 </li>
@@ -324,7 +324,7 @@ async function salir() {
                 <li v-for="item in itemsVisibles(p)" :key="item.id">
                   <span class="font-bold">{{ item.cantidad }}×</span> {{ item.nombre }}
                   <span v-if="item.opciones_elegidas?.length" class="text-sm text-slate-500">
-                    ({{ item.opciones_elegidas.map((o) => o.opcion).join(', ') }})
+                    ({{ item.opciones_elegidas.map((o) => (o.producto ? `${o.producto}: ${o.opcion}` : o.opcion)).join(', ') }})
                   </span>
                 </li>
               </ul>
