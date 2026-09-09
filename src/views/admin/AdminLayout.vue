@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter, RouterLink, RouterView } from 'vue-router'
 import { obtenerLocalPorSlug } from '../../lib/locales'
 import { cerrarSesion, soySuperAdmin } from '../../lib/auth'
@@ -100,6 +100,15 @@ async function salir() {
   await cerrarSesion()
   router.push('/login')
 }
+
+// Menú lateral: drawer en mobile, fijo en desktop.
+const menuAbierto = ref(false)
+watch(menuAbierto, (v) => {
+  document.body.style.overflow = v ? 'hidden' : ''
+})
+// Al navegar, cerrar el drawer.
+watch(() => route.fullPath, () => (menuAbierto.value = false))
+onBeforeUnmount(() => (document.body.style.overflow = ''))
 </script>
 
 <template>
@@ -121,7 +130,20 @@ async function salir() {
   </div>
 
   <div v-else class="flex min-h-screen bg-slate-50 text-slate-900">
-    <aside class="sticky top-0 flex h-screen w-60 shrink-0 flex-col self-start overflow-y-auto bg-slate-900 px-3 py-5">
+    <!-- Backdrop del drawer (solo mobile) -->
+    <div
+      v-if="menuAbierto"
+      class="fixed inset-0 z-30 bg-black/40 md:hidden"
+      @click="menuAbierto = false"
+    />
+
+    <aside
+      :class="[
+        'fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col overflow-y-auto bg-slate-900 px-3 py-5 transition-transform',
+        'md:sticky md:top-0 md:h-screen md:translate-x-0 md:self-start',
+        menuAbierto ? 'translate-x-0' : '-translate-x-full',
+      ]"
+    >
       <div class="flex items-center gap-2.5 px-2">
         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-sm font-extrabold text-white">
           S
@@ -142,7 +164,7 @@ async function salir() {
         >
           <a
             :href="href"
-            @click="navigate"
+            @click="() => { navigate(); menuAbierto = false }"
             :class="[
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition',
               (item.exact ? isExactActive : isActive)
@@ -203,12 +225,22 @@ async function salir() {
       </div>
     </aside>
 
-    <div class="flex-1">
-      <header class="flex h-14 items-center border-b border-slate-200 bg-white px-6">
+    <div class="min-w-0 flex-1">
+      <header class="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:px-6">
+        <button
+          type="button"
+          @click="menuAbierto = true"
+          class="-ml-1 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 md:hidden"
+          aria-label="Abrir menú"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" />
+          </svg>
+        </button>
         <h1 class="text-sm font-semibold text-slate-500">{{ tituloPagina }}</h1>
       </header>
 
-      <main class="p-6">
+      <main class="p-4 sm:p-6">
         <div class="mx-auto max-w-5xl">
           <RouterView v-slot="{ Component }">
             <component :is="Component" :local="local" />

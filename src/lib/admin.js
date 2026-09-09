@@ -38,6 +38,12 @@ export async function obtenerTopProductos(localId, desde, hasta) {
   return data ?? []
 }
 
+export async function obtenerDetallePedido(pedidoId) {
+  const { data, error } = await supabase.rpc('pedido_detalle', { p_pedido_id: pedidoId })
+  if (error) throw error
+  return data
+}
+
 export async function obtenerHistorial(localId, { dias = 30, estado = null, limit = 50, offset = 0 } = {}) {
   const { data, error } = await supabase.rpc('historial_pedidos', {
     p_local_id: localId,

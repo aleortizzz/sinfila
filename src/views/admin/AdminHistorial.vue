@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { obtenerHistorial } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
+import PedidoDetalleModal from '../../components/PedidoDetalleModal.vue'
 
 const props = defineProps({ local: Object })
 
@@ -25,6 +26,7 @@ const LIMIT = 50
 
 const periodo = ref(30)
 const estado = ref('')
+const pedidoSel = ref(null)
 const cargando = ref(true)
 const cargandoMas = ref(false)
 const error = ref(null)
@@ -144,7 +146,12 @@ const ESTADO_CLS = {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="p in pedidos" :key="p.numero" class="hover:bg-slate-50">
+            <tr
+              v-for="p in pedidos"
+              :key="p.id"
+              @click="pedidoSel = p.id"
+              class="cursor-pointer hover:bg-slate-50"
+            >
               <td class="px-4 py-2.5 font-bold text-slate-900">#{{ p.numero }}</td>
               <td class="whitespace-nowrap px-4 py-2.5 text-slate-500">{{ fechaHora(p.created_at) }}</td>
               <td class="px-4 py-2.5 text-slate-900">
@@ -176,5 +183,7 @@ const ESTADO_CLS = {
         </button>
       </div>
     </template>
+
+    <PedidoDetalleModal v-if="pedidoSel" :pedido-id="pedidoSel" @cerrar="pedidoSel = null" />
   </section>
 </template>

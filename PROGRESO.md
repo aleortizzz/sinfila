@@ -387,6 +387,30 @@ Pendiente: banner de aviso en estado `gracia` (funciona normal pero
 habría que avisar "se corta en X días"); notificaciones por mail de la
 gracia; y que el super-admin pueda suspender/reactivar a mano.
 
+## Reportes v3 + detalle de pedido + sidebar mobile (2026-09-09)
+
+- **Datos demo**: 338 pedidos ficticios sobre 35 días en `bar-de-prueba`
+  (marcados con `direccion_referencia = 'seed'`; borrar con
+  `delete from pedidos where direccion_referencia = 'seed'`). Se hizo con
+  un DO block deshabilitando el trigger `pedido_local_abierto` alrededor.
+- Migración `20260909180000`: `reporte_local` ahora devuelve `resumen`
+  (pedidos / ventas / ticket del período) y `previo` (el mismo período
+  anterior) para comparar. Saca `recientes`.
+- Migración `20260909190000`: `pedido_detalle(pedido_id)` (dueño o staff) —
+  header + cliente + dirección + pago + items con opciones/promo + totales
+  + timeline de estados.
+- Migración `20260909200000`: `historial_pedidos` agrega el `id` por fila.
+- `AdminReportes`: fila de tarjetas Resumen con **delta ▲/▼ % vs período
+  anterior**. Título "Ventas/Pedidos por día" (antes "Por día · 21 pedidos"
+  confundía). Botón "Ver todo el período" prominente (pill negra) + estado
+  "· todo el período" cuando no hay día seleccionado.
+- `components/PedidoDetalleModal.vue`: sheet con el detalle. Se abre
+  tocando una fila del historial.
+- `AdminLayout`: el sidebar pasa a **drawer en mobile** (botón hamburguesa
+  en el header, backdrop, scroll bloqueado, se cierra al navegar);
+  `md:sticky` en desktop. `min-w-0` en el contenido para matar el scroll
+  horizontal.
+
 ## Reportes v2 + Historial (2026-09-09)
 
 Migración `20260909170000_reportes_v2.sql`:
