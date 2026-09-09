@@ -107,7 +107,7 @@ async function salir() {
   </div>
 
   <div v-else class="flex min-h-screen bg-slate-50 text-slate-900">
-    <aside class="flex w-60 shrink-0 flex-col bg-slate-900 px-3 py-5">
+    <aside class="sticky top-0 flex h-screen w-60 shrink-0 flex-col self-start overflow-y-auto bg-slate-900 px-3 py-5">
       <div class="flex items-center gap-2.5 px-2">
         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-sm font-extrabold text-white">
           S

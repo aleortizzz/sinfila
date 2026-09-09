@@ -231,9 +231,12 @@ function volver() {
       </div>
     </div>
 
-    <label class="flex items-center gap-2 text-sm text-slate-700">
-      <input type="checkbox" v-model="form.activa" />
-      Activa (se aplica en los pedidos)
+    <label class="flex items-start gap-2 text-sm text-slate-700">
+      <input type="checkbox" v-model="form.activa" class="mt-0.5" />
+      <span>
+        <span class="font-medium">Activa</span> — se aplica sola en los pedidos cuando cae dentro de
+        su día y horario. Destildala para pausarla sin borrarla.
+      </span>
     </label>
 
     <div class="fixed bottom-0 left-0 right-0 z-10 border-t border-slate-200 bg-white/95 backdrop-blur md:left-60">
