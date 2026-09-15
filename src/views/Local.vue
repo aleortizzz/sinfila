@@ -7,6 +7,7 @@ import { pesos } from '../lib/formato'
 import { supabase } from '../lib/supabase'
 import { cerrarSesion, soyDueñoDelLocal, puedoVerFacturacion, puedoEditarMenu } from '../lib/auth'
 import PrimerCambioPassword from '../components/PrimerCambioPassword.vue'
+import BannerGracia from '../components/BannerGracia.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -207,6 +208,7 @@ async function salir() {
     <section v-else-if="error" class="p-6 text-red-600">{{ error }}</section>
 
     <section v-else>
+      <BannerGracia :local="local" />
       <header class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <h1 class="text-lg font-bold text-slate-900">{{ local.nombre }} · Pedidos</h1>

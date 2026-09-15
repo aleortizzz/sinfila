@@ -196,6 +196,41 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Banner de aviso en estado de gracia (2026-09-15)
+
+Pendiente desde el Hito 5 (suscripciones): cuando un local entra en
+"gracia" (venció el trial o la suscripción, pero todavía no se suspendió
+— 5 días de margen, ver `actualizar_estados_vencidos()`), nadie se
+enteraba hasta que un día la carta desaparecía de golpe.
+
+- `BannerGracia.vue`: componente chico, solo se pinta si
+  `local.estado === 'gracia'`. Muestra la fecha límite (`gracia_hasta`)
+  y cuántos días quedan ("hoy" / "mañana" / "en N días"). A propósito
+  **no es dismisseable** — es una alerta de "se te corta el servicio",
+  no algo para ignorar una vez y olvidar.
+- Montado en las dos pantallas donde entra dueño/staff logueado:
+  `Local.vue` (KDS) y `AdminLayout.vue` (panel admin). NO en `Carta.vue`
+  (la pública) — al cliente del local no le interesa ni debería
+  preocuparle la suscripción del negocio.
+- `AdminLayout.vue` pasó de `flex` a `flex flex-col` en el contenedor
+  raíz para que el banner ocupe todo el ancho arriba, con el sidebar +
+  contenido como una fila aparte debajo (el sidebar sigue `sticky`, sin
+  cambios de comportamiento ahí).
+- `obtenerLocalPorSlug()` ahora trae `gracia_hasta` (no traía ninguna
+  columna de suscripción antes). No es un dato sensible — la misma
+  policy de `SELECT` que ya deja ver `estado` públicamente durante
+  trial/activo/gracia deja ver esta columna también.
+- Probado con Playwright contra la cuenta de prueba
+  `borrar-antes-de-produccion@sinfila.test` (dueño de `bar-de-prueba`):
+  se puso el local en `gracia` con `gracia_hasta` a 3 días, se confirmó
+  visualmente el banner en KDS y admin (desktop, mobile, y con el drawer
+  del menú abierto en mobile — no se pisan), y se revirtió el local a
+  `activo` al terminar.
+
+Pendiente (a propósito, no es parte de este pedido): avisos escalonados
+antes de llegar a gracia (ej. "tu trial vence en 3 días") — quedan para
+el Hito 8 junto con notificaciones por mail/WhatsApp.
+
 ## Bug real: cambiarte tu propio nivel de acceso no se aplicaba hasta recargar (2026-09-15)
 
 Reportado por el usuario probando con `aortiz@pelba.com.ar`: siendo

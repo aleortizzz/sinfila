@@ -4,6 +4,7 @@ import { useRoute, useRouter, RouterLink, RouterView } from 'vue-router'
 import { obtenerLocalPorSlug } from '../../lib/locales'
 import { cerrarSesion, soySuperAdmin, soyDueñoDelLocal, puedoVerFacturacion, puedoEditarMenu } from '../../lib/auth'
 import PrimerCambioPassword from '../../components/PrimerCambioPassword.vue'
+import BannerGracia from '../../components/BannerGracia.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -157,7 +158,10 @@ onBeforeUnmount(() => (document.body.style.overflow = ''))
     No encontramos este local.
   </div>
 
-  <div v-else class="flex min-h-screen bg-slate-50 text-slate-900">
+  <div v-else class="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+    <BannerGracia :local="local" />
+
+    <div class="flex flex-1">
     <!-- Backdrop del drawer (solo mobile) -->
     <div
       v-if="menuAbierto"
@@ -275,6 +279,7 @@ onBeforeUnmount(() => (document.body.style.overflow = ''))
           </RouterView>
         </div>
       </main>
+    </div>
     </div>
 
     <PrimerCambioPassword :local-id="local?.id" />
