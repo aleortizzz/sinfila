@@ -1,5 +1,6 @@
 <script setup>
 import { useRoute } from 'vue-router'
+import ToastStack from './components/ToastStack.vue'
 
 // Rutas "bare" (login, KDS, panel admin) traen su propio layout de punta a
 // punta. El resto (carta, checkout, seguimiento, home) son públicas y viven
@@ -13,4 +14,6 @@ const route = useRoute()
   <div v-else class="min-h-screen bg-sand-50">
     <RouterView />
   </div>
+
+  <ToastStack />
 </template>

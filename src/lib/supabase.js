@@ -20,3 +20,13 @@ export const supabase = createClient(
   SUPABASE_URL || 'http://localhost:54321',
   SUPABASE_ANON_KEY || 'anon-key-placeholder',
 )
+
+// Cliente aislado, sin persistir sesión: para operaciones puntuales que
+// necesitan su PROPIA sesión efímera (ej. auth.signUp() al crear la cuenta
+// de un empleado) sin pisarle la sesión al usuario ya logueado con
+// `supabase` de arriba.
+export function crearClienteAislado() {
+  return createClient(SUPABASE_URL || 'http://localhost:54321', SUPABASE_ANON_KEY || 'anon-key-placeholder', {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
+}

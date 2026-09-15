@@ -196,6 +196,774 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Bug real: cambiarte tu propio nivel de acceso no se aplicaba hasta recargar (2026-09-15)
+
+Reportado por el usuario probando con `aortiz@pelba.com.ar`: siendo
+administrador no veía "Historial" ni "Equipo" en el nav; después se bajó
+el nivel a "Staff" desde el desplegable de Equipo y **siguió viendo
+todo** como si nada hubiera cambiado.
+
+**Primero se descartó que fuera un agujero de seguridad real.** Se
+simuló el JWT de `aortiz` directo contra la base (sin pasar por el
+front) para las tres funciones que gatean todo (`es_dueño_local`,
+`puede_ver_facturacion`, `puede_editar_menu`): como administrador dan
+`true/true/true`, como staff dan `false/false/false` — en el momento,
+siempre. Es decir, cualquier lectura/escritura real (RLS o las funciones
+RPC de reportes/historial) se frena igual de bien pase lo que pase en el
+navegador.
+
+**La causa real es front-end**: tanto el cache de permisos del router
+(`cachePermiso` en `router/index.js`, pensado para no repetir el
+RPC en cada click) como el `ref` de permisos de `AdminLayout.vue` se
+calculan **una sola vez por sesión** (al loguearte / al montar el
+layout) y nunca se invalidan. Si cambiás tu propio rol sin recargar la
+página, ese cache queda desactualizado — podés seguir viendo links a
+pantallas que ya no deberías, aunque al entrar esas pantallas no
+muestren datos reales (porque el server sigue chequeando fresco al
+pedirlos).
+
+Con administrador pasa lo mismo al revés: si te promovieron a
+administrador *durante* la misma sesión (en vez de entrar de cero ya
+siendo administrador), el nav sigue mostrando lo que tenías antes de la
+promoción hasta que recargás — por eso "de recién sumado no veía nada".
+
+**Fix**: en `AdminEquipo.vue`, `cambiarNivel()` y `quitar()` ahora
+detectan si la fila que se está tocando es la propia cuenta logueada
+(comparando `usuario_id` contra la sesión actual). Si es así:
+- Cambiar de nivel: confirma el cambio (aviso de que la página se va a
+  recargar) y hace `window.location.reload()` después de guardar — la
+  recarga reinicia el cache del router y el `permisos` de `AdminLayout`,
+  así el nav/las rutas quedan correctas al toque.
+- Sacarte a vos mismo del equipo: cierra sesión y manda a `/login`, ya
+  que no te queda ningún rol en ese local.
+
+No se tocó el cache en sí (sigue sirviendo para el caso normal: navegar
+sin que tu propio rol cambie) — el fix es puntual al único momento en
+que puede quedar desactualizado por una acción tuya.
+
+## Ajuste menor: "Repetila" → "Confirmar contraseña" (2026-09-15)
+
+Texto más prolijo en el modal de primer login (`PrimerCambioPassword.vue`).
+
+## Bug real: no se podía re-sumar a alguien que se había "Quitado" (2026-09-15)
+
+Reportado por el usuario con un caso real: sacó a `aortiz@pelba.com.ar`
+del equipo, después quiso volver a sumarla con el mismo mail, y
+"Sumar a alguien" le devolvía "Ya existe una cuenta con ese email."
+
+**Causa**: "Quitar" borra la fila de `usuario_local_roles` pero nunca la
+cuenta de `auth.users` — a propósito, documentado desde que se construyó
+(por si se la vuelve a sumar más adelante). El problema era que "Sumar a
+alguien" solo sabía **crear una cuenta nueva** (`auth.signUp()`), y
+Supabase rechaza un signup con un mail que ya está registrado. No había
+ningún camino para volver a vincular una cuenta existente.
+
+- Migración `20260915130000_resumar_cuenta_existente.sql`:
+  `sumar_usuario_existente(local_id, email, rol, ve_facturacion,
+  edita_menu, nombre, telefono)` — busca la cuenta de auth por mail y, si
+  todavía no tiene rol en ESE local, se lo asigna directo (sin pasar por
+  signup). Si el mail no existe en absoluto, o la persona ya es parte del
+  equipo, tira un error claro en vez de fallar silenciosamente.
+- `crearCuentaStaff()` ahora es el fallback automático: intenta
+  `auth.signUp()` como siempre, y si Supabase avisa "ya existe" (mismo
+  chequeo de `identities.length === 0` que ya usaba para detectarlo), en
+  vez de tirar error llama a `sumar_usuario_existente()`. Devuelve
+  `{ usuarioId, yaExistia }` en vez de solo el id — el caller necesita
+  saber cuál pasó, porque en el camino de "ya existía" **no hay
+  contraseña nueva que mostrar** (no se pasó por signup).
+- `AdminEquipo.vue`: la tarjeta de "Cuenta creada" ahora tiene una
+  variante para este caso ("Ya tenía cuenta — la re-sumamos al equipo"),
+  sin mostrar una contraseña falsa; el mensaje de WhatsApp avisa "entrá
+  con tu cuenta de siempre" en vez de pasar credenciales inventadas.
+- **Probado con la cuenta real del reporte** (`aortiz@pelba.com.ar`,
+  directo por API): confirmado que estaba en 0 roles tras el "Quitar"
+  original; `sumar_usuario_existente` la re-sumó con éxito (nivel Menú,
+  como tenía antes); un segundo intento sobre la misma persona rechaza
+  correctamente con "Esa persona ya es parte de este equipo." La prueba
+  de punta a punta en el navegador con una cuenta nueva chocó con un
+  rate-limit de intentos de signup de Supabase (acumulado de tanto probar
+  en esta sesión, no relacionado al bug) — no bloqueante, la lógica ya
+  estaba probada a nivel API con el caso real.
+
+## Ficha de empleado + reporte de productividad (2026-09-15)
+
+Cierra los otros 2 pedidos de la misma tanda. Antes de tocar código se
+acotó el alcance con el usuario (ambos eran los más grandes de los 4).
+
+**Ficha de empleado**:
+- Migración `20260915110000_ficha_empleado.sql`: 3 columnas nuevas en
+  `usuario_local_roles` (`nombre`, `telefono`, `notas`). El teléfono ya se
+  pedía al crear una cuenta (para el link de WhatsApp) pero se descartaba
+  después de usarlo una vez — ahora se guarda. `listar_equipo_local`
+  recreada para devolver las 3.
+- `components/FichaEmpleado.vue`: modal con form completo (nombre,
+  teléfono, notas) + datos de solo lectura (alta, último acceso, mail
+  confirmado) + botón **"Guardar" explícito** — a diferencia de los
+  toggles/selects de la pantalla (que guardan solos), acá es un form de
+  varios campos con un textarea, mismo criterio que ya usan
+  `AdminProductoForm`/`AdminConfig` para formularios largos.
+- `AdminEquipo.vue`: botón "Ficha" por persona (incluida la fila del
+  dueño — a propósito: `actualizarFichaEquipo` SÍ permite tocar la fila
+  del dueño, a diferencia de `cambiarNivelEquipo`/`quitarDeEquipo`, porque
+  nombre/teléfono/notas no son campos sensibles, solo `rol` lo es y ese
+  sigue protegido por el trigger). La lista ahora muestra el nombre si
+  existe (con el email como subtítulo), o el email solo si no hay nombre.
+
+**Reporte de productividad**: nueva pestaña "Productividad" dentro de
+Reportes (junto a "Ventas", comparten el mismo selector de período).
+- Migración `20260915120000_reporte_productividad.sql`:
+  `reporte_productividad(local_id, desde, hasta)` — usa
+  `pedido_estados.changed_by`, que se graba desde el Hito 2b, sin
+  necesidad de ningún tracking nuevo. Devuelve `general` (pedidos
+  completados + tiempo promedio del local, creación→listo) y
+  `por_persona` (pedidos manejados + tiempo promedio de preparación,
+  en_preparación→listo, de cada uno). Guardada por `puede_ver_facturacion`
+  — mismo permiso que el resto de Reportes.
+  Nota técnica: la transición automática a "listo" (cuando termina la
+  última estación pendiente, vía `promover_estado_si_listo()`) ya
+  atribuye correctamente a quien la completó — no hizo falta lógica
+  extra para eso.
+- `AdminReportes.vue`: chips "Ventas"/"Productividad" (mismo patrón que
+  `AdminMenu`/`AdminConfig`). El filtro de categoría y el checkbox de
+  envío solo aplican a Ventas; el período es compartido entre las dos.
+- Probado con los datos demo reales (338 pedidos): la consulta corrió
+  bien y trajo números coherentes con la estructura esperada.
+
+**Probado end-to-end en navegador**: crear/editar una ficha (incluida la
+del dueño, sin error), la lista refleja el nombre nuevo, y la pestaña de
+Productividad muestra los 2 números generales + la tabla por persona.
+Datos de prueba (nombre/teléfono/notas puestos en las cuentas de test)
+revertidos a null al terminar.
+
+## Forzar cambio de contraseña en el primer login (2026-09-15)
+
+Pedido del usuario: alguien que entra por primera vez con la contraseña
+generada por Equipo debería tener que elegir la suya propia, para no
+quedarse con algo tipo `hghergsidfnghskjdfhg` para siempre.
+
+- Migración `20260915100000_forzar_cambio_password.sql`: columna
+  `debe_cambiar_password` en `usuario_local_roles` (default `false`).
+  `crearCuentaStaff` la setea en `true` al crear la cuenta.
+  `marcar_password_cambiada()` — security definer acotada a `auth.uid()`
+  (nadie puede tocar la fila de otro) — la vuelve a `false` una vez que la
+  persona elige su propia contraseña.
+- `lib/auth.js`: `debeCambiarPassword(localId)` (lectura simple, la RLS de
+  `usuario_local_roles_select` ya deja a cualquiera ver su propia fila) y
+  `cambiarMiPassword(nueva)` (llama `auth.updateUser` + la RPC de arriba).
+- `components/PrimerCambioPassword.vue`: modal de pantalla completa, sin
+  botón de cerrar (no se puede saltear) — montado en **los dos** puntos de
+  entrada posibles (`Local.vue`/KDS y `AdminLayout.vue`), porque según el
+  nivel de la cuenta el primer login puede caer en cualquiera de los dos.
+- Mensaje de "Cuenta creada" en Equipo actualizado para avisar que va a
+  pedir elegir contraseña propia la primera vez.
+- **Probado de punta a punta**: cuenta nueva con `debe_cambiar_password`
+  en true → aparece el modal al loguearse → lo completa → el modal
+  desaparece → cierra sesión → probar la contraseña VIEJA falla (esperado)
+  → la NUEVA entra directo, sin que el modal vuelva a aparecer. Cuentas de
+  prueba borradas al terminar.
+
+## Bug real: "/" no redirige a alguien ya logueado (2026-09-15)
+
+El usuario reportó que "se desloguea todo el tiempo" — pero la sesión
+nunca se perdía. Probado directo (cerrar el navegador del todo y
+reabrirlo con el mismo perfil): la sesión sobrevive sin problema, Supabase
+la persiste sola en `localStorage`. El problema real: **entra siempre por
+la raíz del dominio** (`sinfila.tizdigital.com`), y esa ruta (`Home.vue`,
+la landing de marketing) nunca chequeaba si ya había sesión activa — le
+mostraba "Registrá tu local / Ya tengo cuenta" a cualquiera, esté logueado
+o no. Lo interpretó como "me desconectó" cuando en realidad nunca hubo
+sesión perdida, solo una landing que no sabía que ya estaba adentro.
+
+- `Home.vue`: en `onMounted`, si hay sesión activa, redirige con la misma
+  lógica que ya usa `Login.vue` tras loguearse (`soySuperAdmin()` →
+  `/superadmin`; si no, `miLocal()` → `/panel/<slug>/admin`). Sin sesión,
+  se ve la landing de siempre.
+- Probado en navegador: sin sesión, `/` muestra la landing normal; con
+  sesión activa, redirige solo a `/panel/bar-de-prueba/admin` sin que el
+  usuario vea la landing ni tenga que loguearse de nuevo.
+
+## Equipo: estado de la cuenta + restablecer contraseña (2026-09-14)
+
+3 mejoras pedidas por el usuario tras cerrar el rediseño de niveles:
+
+- **Badge "Mail sin confirmar"** (ámbar) cuando `email_confirmed_at` es
+  null — evita el llamado confundido de "no puedo entrar" cuando en
+  realidad falta clickear el link del mail.
+- **"Última vez: dd/mm/aaaa, hh:mm"** por persona (o "Nunca entró") — útil
+  sobre todo para el caso que motivó "Administrador": un dueño ausente
+  que quiere ver de un vistazo quién usa la cuenta de verdad.
+- **Botón "Restablecer contraseña"** por persona — dispara
+  `pedirResetContrasena()` (la misma función que ya usa `/recuperar`,
+  reusada tal cual). Resuelve el caso de alguien que perdió el mensaje de
+  WhatsApp con la contraseña original: antes había que borrar y recrear
+  la cuenta entera (perdiendo el nivel de acceso cargado), ahora no.
+
+- Migración `20260914130000_equipo_estado_cuenta.sql`: `listar_equipo_local`
+  recreada (drop+create, cambia el shape) sumando `email_confirmado`
+  (`email_confirmed_at is not null`) y `ultimo_acceso`
+  (`last_sign_in_at`) — sin RLS nueva, es el mismo guard `es_dueño_local`
+  de siempre.
+- **Hallazgo al probar**: la cuenta de prueba "staff plano" apareció con
+  `ve_facturacion: true` (mostraba "Cajero" en vez de "Staff"). Confirmado
+  que es **arrastre de datos de prueba** de tanto testear en la misma
+  sesión larga (no encontré con certeza cuál de las tantas pruebas lo
+  pisó) — no un bug de la lógica de permisos, que se verificó a fondo por
+  API directa en rondas anteriores. Corregido a mano; sirve como
+  recordatorio de que las cuentas de prueba persistentes pueden acumular
+  estado espurio en sesiones de testing largas.
+- Probado: el botón de restablecer efectivamente pega contra
+  `auth.resetPasswordForEmail` (confirmado con un 429 real de "esperá X
+  segundos" cuando se probó dos veces seguidas contra la misma cuenta —
+  de paso, confirma que el toast rojo de error funciona con un caso real,
+  no simulado).
+
+## Equipo: pestañas Agregar / Ver equipo (2026-09-14)
+
+Último ajuste de layout: la pantalla tenía el form de alta y la lista del
+equipo apiladas una debajo de la otra. Pasó al mismo patrón de chips que
+ya usan `AdminConfig.vue` y `AdminMenu.vue` (`SECCIONES` + `v-show`) — dos
+pestañas, **"Agregar"** (default) con el form de alta + la tarjeta de
+"Cuenta creada", y **"Ver equipo"** con la lista para editar nivel o
+sacar gente. Probado en navegador: cambiar de pestaña oculta/muestra el
+contenido correcto y volver a "Agregar" no pierde nada.
+
+## Equipo: redacción final de las descripciones (2026-09-14)
+
+El usuario propuso catalogar los niveles como "Nivel 1/2/3/4 + Administrador"
+en vez de nombres. Se lo desaconsejé: la numeración secuencial implica una
+escalera donde cada nivel contiene al anterior, pero el modelo real no es
+lineal — Cajero (ve facturación) y Menú (edita productos/promos) son dos
+permisos **paralelos**, no un nivel 2 y un nivel 3 uno arriba del otro.
+Numerarlos así hubiera sugerido, por ejemplo, que "nivel 3" incluye "nivel
+2", cuando en realidad son independientes — Encargado es la única
+combinación que sí es una suma real de los otros dos.
+
+Se mantuvo el esquema de nombres, pero se adoptó el estilo de descripción
+que propuso el usuario (describir a la PERSONA/trabajo, no la
+funcionalidad):
+
+- Staff: "Para quienes solo preparan y entregan pedidos."
+- Cajero: "Para quienes además cierran caja y necesitan ver la
+  facturación del día."
+- Menú: "Para quienes cargan productos, combos y promociones."
+- Encargado: "Para quienes supervisan todas las tareas: cierran caja y
+  manejan el menú."
+- Administrador: "Para gestionar la configuración del local y los roles
+  del equipo — incluye todos los permisos anteriores."
+
+Nota sobre por qué "Pedidos (KDS)" no se repite en cada frase corta
+(el usuario preguntó): es la base común a los 5 niveles, no algo que
+distinga a uno del resto — por eso se menciona en Staff (ahí es el 100%
+de su alcance) pero no en los demás, cuyo propósito es decir qué se
+**suma** sobre esa base. El desglose exacto y completo (incluido el ✅ de
+Pedidos en los 5) ya lo muestra el desplegable de cada nivel.
+
+## Equipo: detalle desplegable por nivel (2026-09-14)
+
+Último ajuste de UX sobre Equipo el mismo día: cada nivel en "Nivel de
+acceso" ahora tiene una flechita a la derecha que despliega un checklist
+✅/❌ de las 5 capacidades (Panel de pedidos, Facturación, Menú, Equipo,
+Configuración), sin perder la descripción de una línea que ya estaba.
+
+- `lib/admin.js`: cada entrada de `NIVELES_EQUIPO` suma un objeto
+  `capacidades` (las 5 flags explícitas) + `CAPACIDADES` (un solo lugar
+  con las 5 etiquetas, en el orden en que se muestran).
+- `AdminEquipo.vue`: el botón de la flecha usa `@click.prevent` — hace
+  falta porque está anidado dentro del `<label>` del radio, y sin
+  `.prevent` el click se propaga y termina disparando también la
+  selección del nivel (el comportamiento nativo de un `<label>` es
+  reenviarle el click a su control asociado). Verificado en navegador:
+  abrir el desplegable de "Cajero" o "Administrador" no cambia la
+  selección actual.
+
+## Rol "Administrador" + rediseño de Equipo + toasts (2026-09-14)
+
+Tercera vuelta sobre permisos el mismo día. Pedido del usuario: alguien con
+el mismo poder que el dueño (para dueños "ausentes" que no quieren
+gestionar el equipo ellos mismos), pero **el dueño real sigue siendo uno
+solo** — el creador original vía `registrar_negocio()`. Además: la UI de
+presets+checkboxes de la vuelta anterior quedó confusa, y pidió feedback
+visual real al guardar (toast, no un botón "Guardar" — eso rompería la
+consistencia con el resto de la app, que ya guarda al toque en todos los
+switches).
+
+**Nombre**: descartamos "superadmin" para esto — ese nombre ya lo usa la
+app para el dueño de la plataforma (TizDigital, `/superadmin`, todos los
+locales). Usar el mismo nombre para "co-dueño de un solo local" iba a
+confundir en dos meses. Quedó **"Administrador"**.
+
+**Riesgo que el usuario no pidió pero se desprendía de su propia regla**:
+si administrador y dueño hacen exactamente lo mismo, y administrador
+incluye "gestionar equipo", un administrador podría en teoría sacar o
+degradar al dueño real. Se cerró con un trigger en la base (no solo en el
+front), verificado con un ataque real: un administrador pegándole directo
+a la API REST para cambiarle el rol al dueño real rebota con
+`"No se puede cambiar el rol del dueño del local."` — la protección vale
+incluso salteando el frontend por completo.
+
+- Migración `20260914120000_rol_administrador.sql`:
+  - `usuario_local_roles.rol` ahora acepta `'administrador'` además de
+    `'dueño'`/`'staff'`.
+  - `es_dueño_local()` — la función de la que YA dependían todas las
+    policies de menú/equipo/config/reportes — pasa a `rol in ('dueño',
+    'administrador') or es_super_admin()`. Al ser el único punto de
+    verdad, administrador queda con el mismo poder que dueño en TODOS
+    lados de una sola vez, sin tocar ninguna policy/RPC de nuevo.
+  - Trigger `usuario_local_roles_proteger_dueño`: bloquea `UPDATE` (cambiar
+    el rol) o `DELETE` sobre cualquier fila con `rol = 'dueño'`. Corre para
+    cualquier conexión, incluida la de `postgres` — si algún día hace
+    falta tocar al dueño de verdad, hay que deshabilitar el trigger a mano
+    (mismo criterio que se usó para cargar los pedidos de prueba).
+- **Rediseño de `AdminEquipo.vue`**: se sacaron los presets + 2 checkboxes
+  sueltos. Ahora es **un selector de "Nivel de acceso"** con 5 opciones
+  (Staff/Cajero/Menú/Encargado/Administrador), cada una con una
+  descripción de una línea de qué hace. Se usa igual al crear una cuenta
+  (radios) y al editar una ya creada (un `<select>` por fila, con
+  `nivelDeFila()` calculando cuál de los 5 corresponde a la combinación
+  real de `rol`/`ve_facturacion`/`edita_menu` de esa persona). Promover a
+  alguien a Administrador pide una confirmación explícita (`confirm()`) —
+  a diferencia del resto, que guarda directo, porque es un cambio con
+  mucho más peso.
+  - `lib/admin.js`: `NIVELES_EQUIPO` (un solo lugar con los 5, label +
+    descripción — la UI nunca hardcodea la lista), `nivelDeFila()`,
+    `cambiarNivelEquipo()` (reemplaza a `actualizarPermisosEquipo`).
+    `quitarDeEquipo` ahora excluye por `rol` distinto de `'dueño'` en vez
+    de exigir `rol = 'staff'` — así también se puede sacar a un
+    administrador (el trigger de la base protege al dueño real de todas
+    formas).
+- **Sistema de toasts genérico** (`lib/toast.js` + `components/ToastStack.vue`,
+  montado una vez en `App.vue`): array reactivo simple, sin Pinia — mensaje
+  verde/rojo/amarillo (éxito/error/advertencia) en la esquina inferior
+  derecha, se autodescarta a los 3s. Pensado para reusarse en cualquier
+  pantalla con guardado automático, no solo Equipo.
+- Probado en navegador + directo por API: promover a administrador pide
+  confirmación, aparece el toast verde, el nuevo administrador tiene
+  acceso real (probado contra `listar_equipo_local`, dueño-only) y **no
+  puede** tocar al dueño real ni saltándose el frontend. Cuenta de prueba
+  revertida a Cajero al terminar.
+
+## Bug de paso: el link "Panel admin" del KDS no seguía el permiso nuevo (2026-09-14)
+
+El usuario le dio permiso de "Menú" a una cuenta real (`aortiz@pelba.com.ar`,
+staff) desde Equipo, y esa cuenta seguía sin ver ninguna forma de llegar al
+panel desde el header del KDS. Confirmado en la base que el permiso SÍ se
+había guardado (el toggle guarda solo, no hace falta botón "Guardar") — el
+bug estaba en `Local.vue`: el link "Panel admin" seguía condicionado a
+`esDueño` nada más, de una pasada anterior a los permisos granulares.
+
+- Fix: el link ahora se muestra si hay **cualquier** acceso a `/admin`
+  (dueño, facturación o menú), no solo dueño.
+- Segundo detalle en el mismo fix: el link apuntaba siempre a `/admin`
+  (Inicio), que exige permiso de facturación — alguien con SOLO menú
+  hubiera hecho click y rebotado de vuelta al toque. Ahora el destino se
+  calcula: dueño/facturación → Inicio, solo-menú → directo a `/admin/menu`.
+- Probado con los 4 perfiles de prueba: dueño y cajero van a Inicio, el de
+  solo-menú va directo a `/admin/menu` y **no rebota**, staff plano no ve
+  el link. Mismo patrón que el bug del cache de hace un rato — cambios de
+  permisos nuevos hay que perseguirlos en todos los lugares que asumían el
+  modelo viejo (dueño/staff binario), no solo en el router.
+
+## Permisos granulares de staff (2026-09-14)
+
+Pedido del usuario: separar más el equipo, no solo "dueño vs staff" — por
+ejemplo, quien cierra caja necesita ver la facturación del día sin ser
+dueño. Se evaluó un sistema abierto de checkboxes libres por persona y se
+descartó a propósito: cada permiso suelto es un punto nuevo de seguridad
+para diseñar y probar, y para un local de este tamaño no hace falta esa
+flexibilidad. Se optó por **2 interruptores independientes** en vez de
+rangos con nombre fijo — dan exactamente las 4 combinaciones reales de un
+bar/kiosco, con una fracción del trabajo:
+
+| | Ve facturación | Edita menú |
+|---|---|---|
+| Encargado | ✅ | ✅ |
+| Cajero (cierra caja) | ✅ | ❌ |
+| Solo menú | ❌ | ✅ |
+| Staff (como antes) | ❌ | ❌ |
+
+**Decisión de seguridad clave**: "gestionar equipo" y "configuración del
+local" quedan **siempre dueño-only, sin excepción** — ni con estos 2
+interruptores ni de ninguna otra forma. A propósito: si alguna vez esos
+permisos fueran asignables, existiría el riesgo de que una cuenta de staff
+comprometida se autoasigne más acceso desde la misma pantalla de Equipo.
+
+- Migración `20260914110000_permisos_granulares.sql`: 2 columnas nuevas en
+  `usuario_local_roles` (`ve_facturacion`, `edita_menu`), 2 funciones
+  (`puede_ver_facturacion`, `puede_editar_menu` — cada una `es_dueño_local(...)
+  OR el interruptor puntual`, así el dueño nunca necesita tener los
+  interruptores en true a mano). Se recrearon con el nuevo guard:
+  `estadisticas_local`, `reporte_local`, `historial_pedidos`,
+  `top_productos_local` (facturación) y las policies de escritura de
+  `categorias/productos/grupos_opciones/opciones/combos/combo_items/
+  promos/promo_productos` (menú). `usuario_local_roles`/`locales` (equipo/
+  config) no se tocaron — siguen 100% dueño-only.
+- **Storage de imágenes (`imagenes escribe/actualiza/borra el dueno`)**:
+  se hicieron folder-aware. El path es `<carpeta>/<local_id>/...` y antes
+  solo miraba el `local_id` — si simplemente hubiera ampliado esas 3
+  policies a `puede_editar_menu`, alguien con permiso de menú también
+  habría podido pisar el logo/banner de Configuración (carpeta `locales/`,
+  mismo bucket). Ahora solo las carpetas `productos`/`combos` usan
+  `puede_editar_menu`; cualquier otra carpeta sigue exigiendo
+  `es_dueño_local`.
+- `AdminEquipo.vue`: 2 checkboxes al crear una cuenta + 4 botones de atajo
+  (Encargado/Cajero/Solo menú/Staff que simplemente tildan las 2 casillas
+  de una — no es un sistema aparte). La lista "Tu equipo" ahora deja
+  editar esos 2 permisos por persona ya creada (`togglePermiso`, optimista
+  con rollback si falla), sin tener que borrar y recrear la cuenta.
+- Router: el `requiresDueño` único de todo `/admin` se partió en
+  `meta.permiso` por ruta (`'dueño' | 'facturacion' | 'menu'`). El cache
+  del guard pasó de `usuario:slug` a `usuario:slug:permiso` (mismo
+  criterio que el fix de más abajo — nunca cachear sin el usuario en la
+  clave). `AdminLayout.vue` ahora oculta del sidebar lo que cada quien no
+  puede usar (antes solo bloqueaba, no ocultaba).
+- **Probado en 3 capas, no solo la UI** (esto es acceso a plata, se probó
+  a fondo): (1) matriz completa de rutas para dueño + 2 cuentas de prueba
+  nuevas (cajero, solo-menú) + staff plano, todas dieron exactamente lo
+  esperado; (2) confirmado que el bloqueo es real en RLS, no solo en el
+  router — un cajero intentando `PATCH` un producto **directo por la API**
+  (sin pasar por el front) no modifica nada, y el mismo `PATCH` con la
+  cuenta "solo-menú" sí funciona; (3) UI de Equipo (presets, checkboxes,
+  edición de una cuenta ya creada) probada de punta a punta. Sin errores
+  de consola en ningún caso. Datos de prueba revertidos al terminar.
+- **2 usuarios de prueba nuevos, mismo criterio de siempre (borrar antes
+  de producción)**: `borrar-antes-de-produccion-cajero@sinfila.test`
+  (ve_facturacion) y `borrar-antes-de-produccion-menu@sinfila.test`
+  (edita_menu), mismo password que los anteriores.
+
+## Bug real: el cache del guard `requiresDueño` bloqueaba al dueño real (2026-09-14)
+
+El usuario reportó no poder entrar más a su propio panel con su cuenta real
+(`aleortizjusto3@gmail.com`). Diagnóstico: la cuenta estaba perfecta (
+confirmada, dueño de `bar-de-prueba`, `last_sign_in_at` reciente — el login
+funcionaba) — el problema era el `cacheDueño` agregado en el bloque de
+"Permisos staff vs dueño" de más abajo.
+
+**La causa**: el cache estaba guardado solo por `slug`
+(`cacheDueño.set(slug, esDueño)`). Si en la misma pestaña del navegador se
+probaba primero con la cuenta de staff (quedaba cacheado `bar-de-prueba →
+false`) y después se cerraba sesión y se entraba con la cuenta real
+**sin recargar la página** (el logout de una SPA no recarga nada), el
+guard seguía usando la respuesta vieja para ese slug — bloqueando al
+dueño real aunque el backend le diera acceso sin problema.
+
+**Fix**: la clave del cache pasa a ser `usuario_id:slug` en vez de solo
+`slug`. Cambiar de cuenta ahora genera una clave nueva en vez de pisar/leer
+la de otra persona.
+
+- Reproducido y verificado en navegador headless: login staff → intenta
+  `/admin/reportes` (bloqueado, cachea) → logout sin recargar → login con
+  la cuenta dueño de prueba, misma pestaña → **antes del fix se hubiera
+  quedado bloqueada; con el fix entra normal**.
+- **Lección para la próxima vez que se cachee algo atado a permisos**:
+  cualquier cache en memoria de una SPA tiene que incluir el usuario en la
+  clave, no solo el recurso — el logout no resetea el estado de los
+  módulos JS, solo la sesión de Supabase.
+- Al usuario le quedó la pestaña vieja con el bug en memoria — alcanza con
+  refrescar esa pestaña (F5) para que tome el fix, no hace falta nada más.
+
+## "Equipo": botón directo de WhatsApp (2026-09-14)
+
+Pedido del usuario después de probar "Equipo" en real: además de "Copiar
+mensaje", un botón que abra WhatsApp con el mensaje ya cargado — mismo
+patrón que ya usa el KDS (`linkWhatsapp` en `Local.vue`, `wa.me/<tel>?text=`).
+
+- Campo **Teléfono (opcional)** en el form de alta. Si se carga, la
+  tarjeta de "Cuenta creada" muestra **"Enviar por WhatsApp"** (abre
+  `wa.me` en pestaña nueva) al lado de "Copiar mensaje" (que sigue estando
+  siempre, con o sin teléfono).
+  El mensaje se armó una sola vez en `mensajeInvitacion()` y lo comparten
+  los dos botones — no hay dos copias del texto para mantener sincronizadas.
+- Probado en navegador: el link generado normaliza bien el teléfono
+  (`+54 9 11 1234 5678` → `5491112345678`) y el mensaje llega urlencodeado
+  correcto. Cuenta de prueba borrada después.
+
+## SMTP propio con Resend — CERRADO ✅ (2026-09-14)
+
+Resuelve el pendiente de más abajo (rate limit de mail) el mismo día que
+se encontró.
+
+- Dominio nuevo verificado en Resend: **`sinfila.tizdigital.com`** (aparte
+  de `asiste.tizdigital.com`, que ya usaba el otro proyecto del usuario en
+  la misma cuenta de Resend — separados para no compartir reputación de
+  envío).
+- 5 registros DNS cargados en Cloudflare (zona `tizdigital.com`): DKIM
+  (TXT), MX + TXT de SPF, CNAME, y un **DMARC** en modo `p=none` agregado
+  a mano (Resend no lo pide para verificar, pero sin él Gmail/Outlook
+  igual desconfían — probablemente lo que faltó en el otro proyecto,
+  donde los mails caían en spam).
+- Supabase → Authentication → Emails → SMTP Settings: `smtp.resend.com:587`,
+  usuario `resend`, password = API key de Resend con scope `sending_access`
+  acotada solo a este dominio (no a toda la cuenta).
+- Cloudflare: token API creado acotado a **`tizdigital.com` - DNS:Edit**
+  únicamente (no la API key global) — así el peor caso de una fuga es
+  limitado a los DNS de ese dominio.
+- **Verificado end-to-end**: dos altas seguidas por API salieron sin rate
+  limit (antes tiraba "Demasiados intentos" a la segunda), y el log de
+  Resend confirma `delivered` desde `"SinFila" <no-responder@sinfila.tizdigital.com>`.
+  Cuentas de prueba borradas después.
+
+## Pendiente encontrado al probar "Equipo": rate limit de mail (2026-09-14)
+
+Probando "Equipo" a mano, dos altas seguidas dispararon "Demasiados
+intentos, probá de nuevo en un rato" (`esp()` ya lo traduce). Causa: el
+servicio de mail que trae Supabase por default (sin SMTP propio) tiene un
+límite de pocos mails/hora **no configurable** — es solo para desarrollo,
+no aguanta uso real. No es un bug de "Equipo": el mismo límite le pega a
+`/registro` (alta de un local nuevo) y a recuperar contraseña.
+
+**Plan**: migrar a SMTP propio con **Resend** (Authentication → Emails →
+SMTP Settings en Supabase). El usuario ya usa Resend en otro proyecto —
+ahí los mails caían en spam, probablemente por dominio sin verificar del
+todo (falta común: SPF+DKIM sin DMARC). DNS de `tizdigital.com` está en
+Cloudflare (mismo lugar que el registro A de `sinfila.tizdigital.com`).
+
+**Pausado a pedido del usuario** (2026-09-14) — no bloquea el resto del
+trabajo, sí bloquea probar más de 1-2 veces por hora cualquier flujo que
+mande mail de confirmación.
+
+## "Equipo": alta de cuentas de staff sin SQL (2026-09-14)
+
+Cerraba el gap real que quedó anotado en el bloque anterior: no había
+ninguna forma de crear una cuenta de staff sin que Claude lo hiciera a
+mano por SQL. Pedido del usuario, con el nombre "Equipo" (evitando algo
+tan literal como "Agregar empleados") y como ítem propio del sidebar
+(dueño-only, ya cubierto por el guard `requiresDueño`).
+
+**El problema técnico real**: esta app no tiene servidor propio (SPA +
+Supabase, sin Edge Functions todavía), así que no hay forma de mandar una
+invitación por mail de verdad sin agregar infraestructura nueva (una Edge
+Function con la `service_role` key). La solución sin infra nueva: el dueño
+carga el mail, el sistema genera una contraseña, se muestra una sola vez en
+pantalla para pasarla por WhatsApp — mismo patrón manual que ya usa el KDS
+para avisar "pedido listo". El empleado confirma su mail como cualquier
+alta nueva (mismo flujo que `/registro`).
+
+- Migración `20260914100000_equipo_local.sql`: `listar_equipo_local(local_id)`
+  — security definer, guardada por `es_dueño_local`, hace el join con
+  `auth.users` para traer el email (esa tabla no es accesible directo desde
+  el cliente).
+- `lib/supabase.js`: `crearClienteAislado()` — un segundo cliente de
+  Supabase con `persistSession: false`. Necesario porque `auth.signUp()`
+  en el cliente normal **pisa la sesión activa** con la del usuario recién
+  creado — así el dueño no se desloguea al crear una cuenta ajena. Truco
+  estándar de Supabase para este caso sin backend propio.
+- `lib/auth.js`: `esp` (el traductor de errores de Supabase a español) pasó
+  a exportarse — se reusa tal cual para los errores de `signUp` acá
+  (mail inválido, ya registrado, contraseña débil, etc.), sin duplicar la
+  lista de traducciones.
+- `lib/admin.js`: `generarContraseña()` (10 caracteres, sin 0/O/1/l/I para
+  que se lea bien por WhatsApp), `crearCuentaStaff()`, `quitarDeEquipo()`
+  (esta última solo borra filas con `rol = 'staff'` — a propósito nunca
+  toca la fila del dueño desde esta pantalla).
+- `AdminEquipo.vue` (`/panel/:slug/admin/equipo`): form de alta + tarjeta
+  de "pasale estos datos" con botón de copiar (mismo mensaje armado con
+  mail/contraseña/link de login) + lista del equipo actual con badge
+  Dueño/Staff y botón "Quitar" solo en las filas de staff.
+- **Bug real encontrado en la primera prueba**: probé con un email
+  `@sinfila.test` (el mismo dominio que ya usan los 2 usuarios de prueba
+  creados antes por SQL directo) y Supabase lo rechazó ("Ese email no es
+  válido") — a diferencia de esos 2, que se insertaron directo en
+  `auth.users` sin pasar por la validación real de la API de Auth,
+  `auth.signUp()` sí valida el dominio y rechaza TLDs no entregables como
+  `.test`. No es un bug de la app; se resolvió probando con
+  `mailinator.com` (dominio real usado justamente para este tipo de test).
+- Probado en navegador headless de punta a punta: crear cuenta → aparece
+  en la lista como Staff → **la sesión del dueño no se pisó** (confirmado
+  que el sidebar seguía mostrando su propio local) → Quitar la saca de la
+  lista sin tocar las otras filas. Cuenta de prueba borrada del todo
+  después (`Quitar` únicamente saca el rol, no borra la cuenta de auth —
+  a propósito, por si se la vuelve a sumar más adelante).
+
+## Permisos staff vs dueño: guard de rutas en /admin (2026-09-14)
+
+Auditoría antes de tocar nada: el **backend ya estaba bien separado**
+(RLS/RPC de Reportes, Historial, Menú, Promos, Config y suscripción ya
+exigían `es_dueño_local`; staff nunca pudo tocar plata ni catálogo). El
+hueco real era de **frontend**: `AdminLayout.vue` mostraba el sidebar
+completo a cualquiera con acceso al local, así que un staff que clickeaba
+"Reportes" se encontraba con una pantalla vacía/rota en vez de no ver el
+link. Se descartó explícitamente construir la gestión de staff
+(invitar/agregar cuentas) — hoy no existe ninguna UI para eso, es una
+feature aparte y mucho más grande; esto solo prolija lo que ya había.
+
+- `lib/auth.js`: `soyDueñoDelLocal(localId)` — wrapper de la función SQL
+  `es_dueño_local` (ya tenía grant a `authenticated`, sin migración nueva).
+  Devuelve true para dueño **o** super-admin, igual que el resto del
+  backend — no hay que duplicar esa lógica en el cliente.
+- `router/index.js`: el nodo padre `/panel/:slug/admin` suma
+  `meta: { requiresDueño: true }` (los hijos heredan el meta, cubre las 11
+  rutas de una sola vez). En `beforeEach`, si no es dueño, redirige a
+  `/panel/:slug` (el KDS — el verdadero lugar de trabajo del staff) en vez
+  de dejarlo entrar a un panel que le va a fallar todo.
+  **Cacheado por slug** (`Map` en memoria): sin esto, cada click del dueño
+  dentro de su propio `/admin` — la navegación de todos los días —
+  dispararía 2 round-trips extra antes de cada pantalla. Con caché, el
+  costo extra se paga una sola vez por sesión.
+- **Segundo usuario de prueba** creado para testear esto:
+  `borrar-antes-de-produccion-staff@sinfila.test` / mismo password que el
+  de dueño, rol `staff` en `bar-de-prueba`. Mismo criterio: borrar antes de
+  producción (`delete from usuario_local_roles where usuario_id =
+  '094066eb-f0d7-4cb6-b8a0-71a2a4dd5daf'` + `auth.identities`/`auth.users`
+  con ese id).
+- Probado en navegador headless con las dos cuentas a la vez: el dueño
+  navega `/admin/reportes` y `/admin/menu` sin fricción ni redirects; el
+  staff, al loguearse, cae directo en el KDS, y cualquier intento de
+  entrar a `/admin`, `/admin/reportes` o `/admin/config` por URL directa
+  rebota solo de vuelta al KDS. Sin errores de consola en ninguno de los
+  dos casos.
+- ~~Detalle menor sin resolver: el link "Panel admin" del KDS sigue
+  visible para staff~~ — **resuelto** (2026-09-14, pedido del usuario):
+  `Local.vue` ahora llama a `soyDueñoDelLocal()` al cargar (mismo helper
+  que ya usa el router) y el link solo se renderiza si es dueño. Probado
+  con las dos cuentas de prueba: staff ya no lo ve, dueño sí.
+
+## Renombre: "Disponibilidad" → "Pausar productos" (2026-09-11)
+
+El usuario notó que "Disponibilidad" se iba a prestar a confusión el día
+que exista stock: la disponibilidad real de un producto en la carta va a
+ser el combinado de dos señales (`disponible` manual **Y** `stock > 0`),
+pero el switch individual de cada producto va a seguir llamándose
+"Disponible" para siempre (no se toca, está probado en toda la app).
+
+- Pestaña y herramienta renombradas a **"Pausar productos"** (antes
+  "Disponibilidad en masa"). Estados en la lista: **Activo/Pausado** (antes
+  "Disponible/Agotado" — "Agotado" ya va a significar "sin stock" cuando
+  eso exista, no hay que pisarlo). Botones **Reactivar/Pausar** (antes
+  Activar/Desactivar). Filtro de estado: Activos/Pausados.
+- Variables y función internas renombradas para que el código diga lo
+  mismo que la UI (`pausaCategoriaId`, `pausaFiltrados`,
+  `aplicarPausaMasa`, etc. — antes `disp*`).
+- Mismo campo de datos por debajo (`productos.disponible`), cero cambio de
+  esquema — es un renombre de superficie, no de concepto.
+- Plan para cuando exista stock (anotado, no implementado): NO tocar este
+  switch ni su nombre. El indicador combinado que vea el cliente en la
+  carta (ej. el badge "Agotado" que ya existe) es un concepto nuevo y
+  aparte, calculado a partir de `disponible AND stock > 0` — nunca
+  guardado como un solo valor.
+- Probado en navegador headless tras el rename: primera corrida dio un
+  falso negativo (la UI no reflejaba el cambio a tiempo, aunque el UPDATE
+  sí había llegado a la base — confirmado con una consulta directa),
+  probablemente el server todavía terminando de recompilar tras el
+  refactor. Corrida limpia inmediatamente después: pausar, recargar la
+  página (persiste), reactivar — los 3 pasos ok, sin errores de consola.
+
+## Disponibilidad en masa (2026-09-11)
+
+Segunda herramienta en masa. Se evaluó explícitamente construir la versión
+grande de stock (cantidad real que descuenta, con insumos) en lugar de
+esta, pero se descartó por ahora — el usuario la había marcado como "para
+mucho más adelante" y no hay necesidad urgente; construirla no habría sido
+"más escalable", solo más alcance sin pedido real detrás. Esta sí resuelve
+un caso concreto ("cerró la barra, apagá todos los tragos") sin tocar el
+esquema.
+
+- Pestaña nueva **Disponibilidad** en `AdminMenu.vue` (entre "Precios en
+  masa" y "Stock" — quedan como conceptos separados: esta es on/off manual,
+  "Stock" sigue siendo el placeholder de cantidad real a futuro).
+- Mismo patrón que precios: filtro por categoría + filtro por estado
+  (Todos/Disponibles/Agotados), checklist con "Seleccionar todos", dos
+  botones **Activar**/**Desactivar** que aplican `actualizarProducto(id,
+  {disponible})` en loop. Sin migración — reutiliza la columna que ya
+  existe.
+- **Fix de paso**: el botón "Aplicar" de precios en masa usaba `btn-ghost`
+  (blanco, borde gris clarito) parado sobre un fondo `bg-slate-50` — casi
+  sin contraste, no se leía como botón (lo notó el usuario en una
+  captura). Cambiado a `btn-brand` (sólido) en ambos paneles, ya que es la
+  acción principal de la barra, no un toggle neutro como los de al lado.
+- Probado en navegador headless con el mismo usuario de prueba: filtrar
+  "Comida", seleccionar todos, Desactivar → los 2 productos pasan a
+  "Agotado"; filtrar "Agotados", seleccionar todos, Activar → vuelven a
+  "Disponible". Sin errores de consola. Datos de prueba quedaron en su
+  estado original (Disponible) al terminar.
+
+## Menú por pestañas: Productos / Precios en masa / Stock (2026-09-11)
+
+Pedido del usuario: separar la parte "de a uno" (alta y edición de
+productos/combos) de la parte masiva, para que `AdminMenu.vue` no sea todo
+una sola pantalla larga — sobre todo pensando en que van a sumarse más
+herramientas en masa (stock, disponibilidad).
+
+- Chips arriba (mismo patrón que `AdminConfig.vue`): **Productos**
+  (categorías + productos + combos, como estaba antes), **Precios en
+  masa** (la tarjeta del bloque anterior, ahora en su propia pestaña) y
+  **Stock** (placeholder "todavía no está construido").
+- **Bug encontrado y corregido en el camino**: la pestaña "Productos"
+  quedaba en blanco. Causa: usé `v-show` sobre un `<template>` para
+  agrupar categorías+combos sin un wrapper extra — pero `v-show` necesita
+  un elemento real del DOM para aplicarle `display:none`, y `<template>`
+  no se renderiza como elemento (Vue lo descarta al montar). `v-if` sí es
+  válido sobre `<template>` (es justamente el caso de uso para agrupar sin
+  wrapper); cambiado a `v-if` y quedó bien. Las otras dos pestañas usan
+  `v-show` sobre un `<div>` real, ahí sí corresponde.
+- Verificado en navegador (headless, mismo usuario de prueba): las 3
+  pestañas cambian de contenido correctamente y volver a "Productos"
+  mantiene todo (categorías, productos, combos) sin perder datos.
+
+## Precios en masa (2026-09-11)
+
+Primer pedazo del "Patrón de UI recurrente" (filtrar + multiseleccionar +
+aplicar) que quedaba anotado más abajo — resultó que de las tres cosas que
+esa nota imaginaba, solo el picker de productos de una promo existía
+(y sin filtro ni "seleccionar todos"); precios en masa y disponibilidad en
+masa no estaban construidos. Se arrancó por precios (pedido explícito del
+usuario: automatizar tareas tediosas para los dueños — subir precios por
+categoría es algo que hacen seguido por inflación).
+
+- **Sin migración** — reutiliza `actualizarProducto()` y la policy RLS de
+  `productos` que ya existían (las mismas que usa el switch de disponible).
+- `AdminMenu.vue`: tarjeta nueva "Precios en masa" arriba de las categorías.
+  Filtro por categoría + por precio actual exacto (para el caso "todos los
+  de $8000 a $9000" dentro de una categoría con precios mezclados),
+  checklist con "Seleccionar todos", y modo **Fijar precio** o **Ajustar %**
+  (mismo look que el ajuste en masa de zonas de delivery en `AdminConfig`).
+  Aplica con un loop secuencial de `actualizarProducto` + `confirm()`.
+- **Probado de punta a punta** (headless, con Playwright instalado
+  temporalmente — `npm install --no-save`, desinstalado después): login,
+  filtro por "Tragos", seleccionar todos, +10%, confirmar → los 4 productos
+  pasaron de $8.000 a $8.800 en el panel y en la lista principal a la vez
+  (misma referencia reactiva), sin errores de consola. Precios de prueba
+  revertidos a $8.000 después de probar.
+- **Usuario de prueba creado para poder testear sin pedir contraseña**:
+  `borrar-antes-de-produccion@sinfila.test`, rol `dueño` de `bar-de-prueba`
+  (creado por SQL directo con `pgcrypto`, mismo truco que ya usábamos para
+  cargar datos sin pasar por la confirmación de mail). El email ya lo dice:
+  **borrar esta cuenta antes de salir a producción** — `delete from
+  usuario_local_roles where usuario_id = '7e868c6e-493a-4a5d-9542-50f8eabfb801'`
+  y después `delete from auth.identities/auth.users` con ese mismo id (o
+  buscarlo por email).
+
+Pendiente (más chico, mismo bloque): disponibilidad en masa (activar/
+desactivar varios productos de una, para el caso "cerró la barra, apagá
+todos los tragos"). Cuando se construya, ahí sí conviene extraer un
+componente compartido con este filtro — con dos casos reales recién tiene
+sentido la abstracción.
+
+## Rate-limit en `registrar_negocio`: intentado y revertido (2026-09-11)
+
+Cerraba el pendiente anotado en "Endurecimiento de seguridad": `registrar_negocio`
+ya bloqueaba que un mismo usuario creara más de un local, pero no había techo
+para una ráfaga de altas hechas con cuentas de auth distintas (spam de
+`locales` en `pendiente_activacion`).
+
+- Migración `20260911100000_rate_limit_registro.sql`: primer intento —
+  cortar si ya se crearon 10+ locales en la última hora, **global** (todos
+  los usuarios juntos, no por origen).
+- **Revertido en `20260911110000`**: contar el total de altas del sistema
+  castiga el *volumen*, no el *abuso* — un pico real de ventas (varios
+  dueños genuinos registrándose la misma hora, que es justo lo que se
+  quiere lograr con el producto) se hubiera bloqueado igual que un bot.
+  La señal correcta es "muchos intentos desde el MISMO origen" (IP), y eso
+  no se puede ver de forma confiable dentro de una función de Postgres —
+  ahí solo se ve al usuario ya autenticado, no la IP del caller.
+- **Dónde queda la protección real**: Supabase Auth ya aplica su propio
+  rate-limit de signup por IP, *antes* de que se pueda siquiera llamar a
+  `registrar_negocio` (hace falta una cuenta confirmada por cada intento,
+  por el guard "un usuario = un local"). Si algún día hace falta más,
+  el fix correcto es un **captcha** (Turnstile/hCaptcha) en `/registro`
+  (`captchaToken` en `auth.signUp`, soportado nativo) — discrimina bot vs.
+  humano sin penalizar el volumen de altas reales. Queda anotado como
+  mejora futura, no urgente.
+
 ## Estado actual — Pasada de diseño visual (2026-09-08)
 
 Primera pasada fuerte de UI sobre todo lo ya construido (a pedido del
@@ -626,9 +1394,9 @@ Huecos tapados:
   ya no puede editar totales ni datos del cliente por API. El KDS solo toca
   esas 3 columnas.
 
-Pendientes (no críticos, no tocan plata): `registrar_negocio` sin
-rate-limit (spam de locales pendientes); separar permisos staff vs dueño
-más fino a futuro.
+Pendientes (no críticos, no tocan plata): separar permisos staff vs dueño
+más fino a futuro. (El rate-limit de `registrar_negocio` se cerró después,
+ver más abajo.)
 
 ## Recupero de contraseña (2026-09-09)
 
@@ -712,9 +1480,12 @@ y un pedido `pendiente` ya se veía en Barra/Cocina.
 
 ## Patrón de UI recurrente
 
-"**Filtrar + multiseleccionar + aplicar**" aparece en 3 lugares: editor de
-precios en masa, gestor de disponibilidad (agotado / corte de tragos), y armado
-de promos. Conviene un componente reutilizable.
+"**Filtrar + multiseleccionar + aplicar**" — la idea original (2026-09-07)
+era que esto iba a aparecer en 3 lugares: editor de precios en masa, gestor
+de disponibilidad (agotado / corte de tragos), y armado de promos. En la
+práctica solo se construyeron precios en masa (ver 2026-09-11) y un picker
+simple de promos sin filtro — la nota de "componente reutilizable" queda en
+pausa hasta que exista un segundo caso real (disponibilidad en masa).
 
 ## Stack
 
@@ -1186,10 +1957,12 @@ También: `SeguimientoPedido.vue` ahora muestra la línea "Descuento
 (promo)" cuando corresponde (el dato ya viajaba en `obtener_pedido_publico`
 desde el Hito 7, solo faltaba mostrarlo).
 
-Pendiente (anotado, no bloqueante): mostrar el descuento en el
-**carrito antes de pagar** (hoy recién se ve en la confirmación/
-seguimiento) — necesitaría repetir la lógica de promos en JS para el
-preview, similar a como el precio de los combos se calcula en el cliente.
+~~Pendiente (anotado, no bloqueante): mostrar el descuento en el
+carrito antes de pagar~~ — **resuelto** (ver "Preview de promo en el
+checkout", 2026-09-08): `Carta.vue` llama a `previsualizar_pedido` con
+debounce y le pasa el resultado a `CarritoResumen`, que ya muestra
+subtotal tachado + "Descuento (promo)" + total real antes de llegar al
+checkout. Verificado en el código el 2026-09-11, sin pendiente.
 
 **Pendiente, más grande**: elegir una variante específica al armar un
 combo (ej. "este combo lleva las papas con cheddar"). Hoy `combo_items`

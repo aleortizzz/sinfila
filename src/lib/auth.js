@@ -15,7 +15,7 @@ const TRADUCCIONES = [
   { re: /failed to fetch|network ?error|networkerror/i, txt: 'Problema de conexión. Revisá tu internet e intentá de nuevo.' },
 ]
 
-function esp(error) {
+export function esp(error) {
   const msg = error?.message || String(error ?? 'Error desconocido')
   for (const t of TRADUCCIONES) {
     const m = msg.match(t.re)
@@ -86,6 +86,48 @@ export async function soySuperAdmin() {
   const { data, error } = await supabase.rpc('es_super_admin')
   if (error) return false
   return data === true
+}
+
+// Dueño del local (o super-admin) vs. staff — para ocultar del panel lo que
+// staff no puede tocar (RLS ya lo bloquea del lado del servidor, esto es
+// solo para no mostrarle un link a una pantalla que le va a fallar).
+export async function soyDueñoDelLocal(localId) {
+  const { data, error } = await supabase.rpc('es_dueño_local', { p_local_id: localId })
+  if (error) return false
+  return data === true
+}
+
+// Permisos granulares de staff (ver PROGRESO.md, 2026-09-14): 2 interruptores
+// independientes en usuario_local_roles — el dueño siempre da true en los dos.
+export async function puedoVerFacturacion(localId) {
+  const { data, error } = await supabase.rpc('puede_ver_facturacion', { p_local_id: localId })
+  if (error) return false
+  return data === true
+}
+
+export async function puedoEditarMenu(localId) {
+  const { data, error } = await supabase.rpc('puede_editar_menu', { p_local_id: localId })
+  if (error) return false
+  return data === true
+}
+
+// Cuentas de staff creadas desde Equipo arrancan con una contraseña
+// generada — hay que forzar que la cambien la primera vez que entran.
+export async function debeCambiarPassword(localId) {
+  const { data, error } = await supabase
+    .from('usuario_local_roles')
+    .select('debe_cambiar_password')
+    .eq('local_id', localId)
+    .maybeSingle()
+  if (error || !data) return false
+  return data.debe_cambiar_password === true
+}
+
+export async function cambiarMiPassword(nuevaPassword) {
+  const { error } = await supabase.auth.updateUser({ password: nuevaPassword })
+  if (error) throw esp(error)
+  const { error: errFlag } = await supabase.rpc('marcar_password_cambiada')
+  if (errFlag) throw esp(errFlag)
 }
 
 // El local del usuario logueado (si es dueño/staff de alguno). null si no tiene.

@@ -1,4 +1,5 @@
-import { supabase } from './supabase'
+import { supabase, crearClienteAislado } from './supabase'
+import { esp } from './auth'
 
 // Conserva error.code (ej. '23503' foreign key) — así el que llama puede
 // distinguir "está referenciado en otro lado" de cualquier otro error, en
@@ -44,6 +45,18 @@ export async function obtenerReporte(
   })
   if (error) throw error
   return data // { desde, hasta, serie, top, resumen, previo } | null
+}
+
+// Pedidos manejados y tiempo de preparación por persona + tiempo general
+// del local. Usa pedido_estados.changed_by, que ya se graba desde siempre.
+export async function obtenerReporteProductividad(localId, { desde = null, hasta = null } = {}) {
+  const { data, error } = await supabase.rpc('reporte_productividad', {
+    p_local_id: localId,
+    p_desde: desde,
+    p_hasta: hasta,
+  })
+  if (error) throw error
+  return data // { desde, hasta, general: {...}, por_persona: [...] } | null
 }
 
 // Más vendidos de un rango (para filtrar por el día clickeado en el gráfico).
@@ -366,5 +379,173 @@ export async function quitarProductoPromo(promoId, productoId) {
     .delete()
     .eq('promo_id', promoId)
     .eq('producto_id', productoId)
+  if (error) lanzar(error)
+}
+
+// --- Equipo (staff): alta/baja de cuentas, sin tocar SQL a mano ---
+
+export async function obtenerEquipoLocal(localId) {
+  const { data, error } = await supabase.rpc('listar_equipo_local', { p_local_id: localId })
+  if (error) throw esp(error)
+  return data ?? []
+}
+
+// Genera una contraseña legible para pasar por WhatsApp — sin caracteres
+// que se confunden al leerla en voz alta o transcribirla (0/O, 1/l/I).
+export function generarContraseña() {
+  const alfabeto = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  const bytes = crypto.getRandomValues(new Uint32Array(10))
+  return Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join('')
+}
+
+// Los 5 niveles de acceso (ver PROGRESO.md, 2026-09-14). Un solo lugar que
+// los define — la UI arma el selector desde acá, nunca hardcodea la lista.
+// "dueño" no está acá a propósito: es el único, se crea con
+// registrar_negocio(), nunca se asigna desde esta pantalla ni se puede
+// tocar (hay un trigger en la base que lo protege).
+// El orden de las claves es el orden en que se muestran en el desplegable
+// de detalle de cada nivel (ver AdminEquipo.vue).
+export const CAPACIDADES = {
+  pedidos: 'Panel de pedidos (KDS)',
+  facturacion: 'Facturación / reportes',
+  menu: 'Menú',
+  equipo: 'Equipo',
+  config: 'Configuración',
+}
+
+export const NIVELES_EQUIPO = [
+  {
+    valor: 'staff',
+    label: 'Staff',
+    descripcion: 'Para quienes solo preparan y entregan pedidos.',
+    capacidades: { pedidos: true, facturacion: false, menu: false, equipo: false, config: false },
+  },
+  {
+    valor: 'cajero',
+    label: 'Cajero',
+    descripcion: 'Para quienes además cierran caja y necesitan ver la facturación del día.',
+    capacidades: { pedidos: true, facturacion: true, menu: false, equipo: false, config: false },
+  },
+  {
+    valor: 'menu',
+    label: 'Menú',
+    descripcion: 'Para quienes cargan productos, combos y promociones.',
+    capacidades: { pedidos: true, facturacion: false, menu: true, equipo: false, config: false },
+  },
+  {
+    valor: 'encargado',
+    label: 'Encargado',
+    descripcion: 'Para quienes supervisan todas las tareas: cierran caja y manejan el menú.',
+    capacidades: { pedidos: true, facturacion: true, menu: true, equipo: false, config: false },
+  },
+  {
+    valor: 'administrador',
+    label: 'Administrador',
+    descripcion: 'Para gestionar la configuración del local y los roles del equipo — incluye todos los permisos anteriores.',
+    capacidades: { pedidos: true, facturacion: true, menu: true, equipo: true, config: true },
+  },
+]
+
+function datosDeNivel(nivel) {
+  if (nivel === 'administrador') return { rol: 'administrador', ve_facturacion: true, edita_menu: true }
+  return {
+    rol: 'staff',
+    ve_facturacion: nivel === 'cajero' || nivel === 'encargado',
+    edita_menu: nivel === 'menu' || nivel === 'encargado',
+  }
+}
+
+// A la inversa: de una fila de usuario_local_roles a su nivel. Para mostrar
+// la selección actual de alguien ya creado.
+export function nivelDeFila(m) {
+  if (m.rol === 'dueño') return 'dueño'
+  if (m.rol === 'administrador') return 'administrador'
+  if (m.ve_facturacion && m.edita_menu) return 'encargado'
+  if (m.ve_facturacion) return 'cajero'
+  if (m.edita_menu) return 'menu'
+  return 'staff'
+}
+
+// Crea la cuenta de auth del empleado (en un cliente aparte, para no pisar
+// la sesión del dueño logueado) y le asigna el nivel elegido en el local.
+// El empleado va a tener que confirmar su mail antes de poder loguearse
+// (mismo flujo que /registro) — se le pasa el mail + esta contraseña.
+//
+// Devuelve { usuarioId, yaExistia }. Si el mail ya tenía una cuenta (típico:
+// se la había "Quitado" del equipo antes — Quitar nunca borra la cuenta de
+// auth, a propósito, justo para este caso), la re-suma usando
+// sumar_usuario_existente() en vez de fallar — no se le puede asignar una
+// contraseña nueva ahí (no pasa por signUp), así que el caller no debería
+// mostrarle una como si fuera nueva.
+export async function crearCuentaStaff(localId, email, password, nivel, { nombre = '', telefono = '' } = {}) {
+  const emailLimpio = email.trim()
+  const datos = datosDeNivel(nivel)
+  const cliente = crearClienteAislado()
+  const { data, error } = await cliente.auth.signUp({ email: emailLimpio, password })
+  if (error) throw esp(error)
+
+  // Mail ya registrado: Supabase no tira error (por seguridad, para no
+  // confirmar por enumeración si un mail existe), pero devuelve un user
+  // sin identidades nuevas.
+  if (!data.user || data.user.identities?.length === 0) {
+    const { data: usuarioId, error: errExistente } = await supabase.rpc('sumar_usuario_existente', {
+      p_local_id: localId,
+      p_email: emailLimpio,
+      p_rol: datos.rol,
+      p_ve_facturacion: datos.ve_facturacion,
+      p_edita_menu: datos.edita_menu,
+      p_nombre: nombre.trim() || null,
+      p_telefono: telefono.trim() || null,
+    })
+    if (errExistente) throw esp(errExistente)
+    return { usuarioId, yaExistia: true }
+  }
+
+  const { error: errRol } = await supabase.from('usuario_local_roles').insert({
+    usuario_id: data.user.id,
+    local_id: localId,
+    ...datos,
+    debe_cambiar_password: true,
+    nombre: nombre.trim() || null,
+    telefono: telefono.trim() || null,
+  })
+  if (errRol) lanzar(errRol)
+  return { usuarioId: data.user.id, yaExistia: false }
+}
+
+// Ficha de empleado: nombre/teléfono/notas. Nunca toca la fila del dueño
+// (protegida además por el trigger en la base).
+// A diferencia de cambiarNivelEquipo/quitarDeEquipo, acá SÍ se puede tocar
+// la fila del dueño — nombre/teléfono/notas no son campos sensibles (el
+// trigger de la base solo protege `rol`, esto ni lo intenta tocar).
+export async function actualizarFichaEquipo(localId, usuarioId, { nombre, telefono, notas }) {
+  const { error } = await supabase
+    .from('usuario_local_roles')
+    .update({ nombre: nombre?.trim() || null, telefono: telefono?.trim() || null, notas: notas?.trim() || null })
+    .eq('local_id', localId)
+    .eq('usuario_id', usuarioId)
+  if (error) lanzar(error)
+}
+
+// Nunca toca la fila del dueño (la base lo bloquea con un trigger de
+// todas formas, pero acá directamente ni se intenta).
+export async function cambiarNivelEquipo(localId, usuarioId, nivel) {
+  const { error } = await supabase
+    .from('usuario_local_roles')
+    .update(datosDeNivel(nivel))
+    .eq('local_id', localId)
+    .eq('usuario_id', usuarioId)
+    .neq('rol', 'dueño')
+  if (error) lanzar(error)
+}
+
+// Staff o administrador — nunca el dueño (protegido también en la base).
+export async function quitarDeEquipo(localId, usuarioId) {
+  const { error } = await supabase
+    .from('usuario_local_roles')
+    .delete()
+    .eq('local_id', localId)
+    .eq('usuario_id', usuarioId)
+    .neq('rol', 'dueño')
   if (error) lanzar(error)
 }

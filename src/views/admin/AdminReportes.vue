@@ -1,16 +1,23 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { obtenerReporte, obtenerTopProductos, obtenerCategoriasAdmin } from '../../lib/admin'
+import { obtenerReporte, obtenerTopProductos, obtenerCategoriasAdmin, obtenerReporteProductividad } from '../../lib/admin'
 import { pesos } from '../../lib/formato'
 import { opcionesPeriodo, periodoPorDefecto, rangoPeriodo } from '../../lib/periodos'
 
 const props = defineProps({ local: Object })
 const route = useRoute()
 
+const SECCIONES = [
+  ['ventas', 'Ventas'],
+  ['productividad', 'Productividad'],
+]
+const seccion = ref('ventas')
+
 const cargando = ref(true)
 const error = ref(null)
 const data = ref(null)
+const dataProd = ref(null)
 const metrica = ref('ventas') // 'ventas' | 'pedidos'
 const OPCIONES = computed(() => opcionesPeriodo(props.local?.created_at))
 const periodo = ref(periodoPorDefecto())
@@ -55,11 +62,13 @@ async function cargar() {
   error.value = null
   diaSel.value = null
   try {
-    data.value = await obtenerReporte(props.local.id, {
-      ...rangoPeriodo(periodo.value),
-      categoriaId: categoria.value || null,
-      incluirEnvio: incluirEnvio.value,
-    })
+    const rango = rangoPeriodo(periodo.value)
+    const [reporte, prod] = await Promise.all([
+      obtenerReporte(props.local.id, { ...rango, categoriaId: categoria.value || null, incluirEnvio: incluirEnvio.value }),
+      obtenerReporteProductividad(props.local.id, rango),
+    ])
+    data.value = reporte
+    dataProd.value = prod
   } catch (e) {
     error.value = e.message
   } finally {
@@ -128,6 +137,16 @@ const rangoReal = computed(() => {
   if (!serie.value.length) return 'sin datos'
   return `del ${dm(serie.value[0].fecha)} al ${dm(serie.value[serie.value.length - 1].fecha)}`
 })
+
+// --- Productividad ---
+function formatoDuracion(seg) {
+  if (seg === null || seg === undefined) return '—'
+  const min = Math.round(Number(seg) / 60)
+  if (min < 60) return `${min} min`
+  return `${Math.floor(min / 60)} h ${min % 60} min`
+}
+const generalProd = computed(() => dataProd.value?.general ?? { pedidos_completados: 0, seg_promedio_total: null })
+const porPersona = computed(() => dataProd.value?.por_persona ?? [])
 </script>
 
 <template>
@@ -140,8 +159,18 @@ const rangoReal = computed(() => {
           <span v-if="nombreCategoria" class="font-medium t-brand">· solo {{ nombreCategoria }}</span>
         </p>
       </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="s in SECCIONES" :key="s[0]"
+          type="button" @click="seccion = s[0]"
+          :class="['chip', seccion === s[0] && 'chip-active']"
+        >
+          {{ s[1] }}
+        </button>
+      </div>
+
       <div class="flex flex-wrap items-center gap-2">
-        <select v-model="categoria" class="input w-auto">
+        <select v-if="seccion === 'ventas'" v-model="categoria" class="input w-auto">
           <option value="">Todas las categorías</option>
           <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
         </select>
@@ -149,7 +178,7 @@ const rangoReal = computed(() => {
           <option v-for="o in OPCIONES" :key="o.id" :value="o.id">{{ o.label }}</option>
         </select>
         <label
-          v-if="!nombreCategoria"
+          v-if="seccion === 'ventas' && !nombreCategoria"
           class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm"
         >
           <input type="checkbox" v-model="incluirEnvio" class="h-4 w-4 accent-brand-500" />
@@ -162,6 +191,7 @@ const rangoReal = computed(() => {
     <p v-else-if="cargando" class="text-slate-500">Cargando…</p>
 
     <template v-else>
+    <div v-show="seccion === 'ventas'" class="space-y-6">
       <!-- Resumen del período + comparación con el anterior -->
       <div class="grid gap-4 sm:grid-cols-3">
         <div v-for="t in tarjetas" :key="t.label" class="card p-4">
@@ -302,6 +332,49 @@ const rangoReal = computed(() => {
         </div>
         <span class="text-sm font-medium t-brand">Abrir →</span>
       </RouterLink>
+    </div>
+
+    <div v-show="seccion === 'productividad'" class="space-y-6">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="card p-4">
+          <p class="label">Pedidos completados</p>
+          <p class="mt-2 text-2xl font-extrabold text-slate-900">{{ generalProd.pedidos_completados }}</p>
+          <p class="mt-1 text-xs text-slate-400">del período — no cuenta rechazados ni cancelados</p>
+        </div>
+        <div class="card p-4">
+          <p class="label">Tiempo promedio del local</p>
+          <p class="mt-2 text-2xl font-extrabold text-slate-900">{{ formatoDuracion(generalProd.seg_promedio_total) }}</p>
+          <p class="mt-1 text-xs text-slate-400">desde que entra el pedido hasta que queda listo</p>
+        </div>
+      </div>
+
+      <div class="card p-5">
+        <p class="label">Por persona</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Pedidos manejados (aceptó, marcó listo o entregó al menos uno de sus pasos) y el tiempo
+          promedio que tarda en dejar un pedido listo una vez que empieza a prepararlo.
+        </p>
+        <table class="mt-4 w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-left text-xs text-slate-400">
+              <th class="pb-2 font-medium">Persona</th>
+              <th class="pb-2 text-right font-medium">Pedidos manejados</th>
+              <th class="pb-2 text-right font-medium">Tiempo prom. de preparación</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="p in porPersona" :key="p.usuario_id">
+              <td class="py-2 text-slate-900">{{ p.nombre || p.email }}</td>
+              <td class="py-2 text-right font-medium text-slate-900">{{ p.pedidos_manejados }}</td>
+              <td class="py-2 text-right text-slate-600">{{ formatoDuracion(p.seg_prep_promedio) }}</td>
+            </tr>
+            <tr v-if="!porPersona.length">
+              <td colspan="3" class="py-3 text-slate-400">Todavía no hay movimiento del equipo en este período.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     </template>
   </section>
 </template>

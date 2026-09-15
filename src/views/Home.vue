@@ -1,9 +1,31 @@
 <script setup>
 // Portada simple. La landing de marketing es un pendiente aparte.
+//
+// Si ya hay sesión activa, no tiene sentido mostrarle la landing de "Registrá
+// tu local / Ya tengo cuenta" a alguien que ya está adentro — lo mandamos
+// directo a lo suyo, misma lógica que ya usa Login.vue tras loguearse.
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { obtenerSesion, soySuperAdmin, miLocal } from '../lib/auth'
+
+const router = useRouter()
+const revisando = ref(true)
+
+onMounted(async () => {
+  const sesion = await obtenerSesion()
+  if (sesion) {
+    if (await soySuperAdmin()) return router.replace('/superadmin')
+    const l = await miLocal()
+    if (l?.locales?.slug) return router.replace(`/panel/${l.locales.slug}/admin`)
+  }
+  revisando.value = false
+})
 </script>
 
 <template>
-  <section class="mx-auto max-w-lg px-5 py-20 text-center">
+  <section v-if="revisando" class="p-20 text-center text-slate-500">Cargando…</section>
+
+  <section v-else class="mx-auto max-w-lg px-5 py-20 text-center">
     <p class="text-sm font-bold uppercase tracking-widest t-brand">SinFila</p>
     <h1 class="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
       No hagas fila: escaneá, elegí y esperá tu pedido.

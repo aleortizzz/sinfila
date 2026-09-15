@@ -5,7 +5,8 @@ import { obtenerLocalPorSlug } from '../lib/locales'
 import { obtenerPedidosActivos, obtenerPedidoConItems, actualizarPedido, suscribirseAPedidos } from '../lib/pedidos'
 import { pesos } from '../lib/formato'
 import { supabase } from '../lib/supabase'
-import { cerrarSesion } from '../lib/auth'
+import { cerrarSesion, soyDueñoDelLocal, puedoVerFacturacion, puedoEditarMenu } from '../lib/auth'
+import PrimerCambioPassword from '../components/PrimerCambioPassword.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +14,19 @@ const router = useRouter()
 const cargando = ref(true)
 const error = ref(null)
 const local = ref(null)
+// Mostrar el link "Panel admin" si tiene ALGÚN acceso ahí adentro — no
+// solo el dueño: ahora un staff con permiso de facturación o menú también
+// tiene una pantalla a la que ir (ver PROGRESO.md, permisos granulares).
+// El destino del link tiene que ser algo que esa persona pueda abrir —
+// "Inicio" exige facturación, así que alguien con SOLO menú iría directo
+// al menú, no a una pantalla que lo rebota de nuevo acá.
+const permisosAdmin = ref({ dueño: false, facturacion: false, menu: false })
+const linkAdmin = computed(() => {
+  const p = permisosAdmin.value
+  if (!p.dueño && !p.facturacion && !p.menu) return null
+  const destino = p.dueño || p.facturacion ? '' : '/menu'
+  return `/panel/${route.params.slug}/admin${destino}`
+})
 // Map en vez de array: si por lo que sea llega el mismo pedido más de una
 // vez (canales de Realtime duplicados de una recarga anterior, eventos que
 // se pisan), escribir dos veces la misma clave no duplica nada — es
@@ -87,6 +101,13 @@ onMounted(async () => {
       error.value = 'No encontramos este local.'
       return
     }
+    const [dueño, facturacion, menu] = await Promise.all([
+      soyDueñoDelLocal(local.value.id),
+      puedoVerFacturacion(local.value.id),
+      puedoEditarMenu(local.value.id),
+    ])
+    permisosAdmin.value = { dueño, facturacion, menu }
+
     const activos = await obtenerPedidosActivos(local.value.id)
     activos.forEach((p) => pedidosPorId.set(p.id, p))
 
@@ -191,7 +212,8 @@ async function salir() {
           <h1 class="text-lg font-bold text-slate-900">{{ local.nombre }} · Pedidos</h1>
           <div class="flex items-center gap-4 text-sm">
             <RouterLink
-              :to="`/panel/${route.params.slug}/admin`"
+              v-if="linkAdmin"
+              :to="linkAdmin"
               class="font-medium text-slate-500 hover:text-slate-900"
             >
               Panel admin
@@ -341,5 +363,7 @@ async function salir() {
         </div>
       </div>
     </section>
+
+    <PrimerCambioPassword :local-id="local?.id" />
   </div>
 </template>
