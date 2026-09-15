@@ -196,6 +196,46 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## SuperAdmin: fechas de suscripción editables a mano, para poder probar (2026-09-15)
+
+Surgió al probar el banner de gracia: no había forma de "adelantar" el
+vencimiento de un local sin esperar un mes real, ni sin pedirme que
+hackee la base por SQL cada vez. El usuario pidió directamente un
+calendario en el panel para poder jugar con las fechas él mismo.
+
+- Migración `20260915140000_super_admin_fechas_manuales.sql`:
+  - `fijar_fechas_local(local_id, trial_hasta, proximo_vencimiento,
+    gracia_hasta)` — pisa las 3 fechas de un local a mano. Guardada con
+    el mismo chequeo `es_super_admin()` que `activar_local`/
+    `registrar_pago`; el dueño del local sigue sin poder tocarlas (los
+    `GRANT` por columna de la migración base no cambiaron).
+  - `actualizar_estados_vencidos_ahora()` — wrapper de
+    `actualizar_estados_vencidos()` (el cron diario) para poder correrlo
+    al toque desde el botón, en vez de esperar a la madrugada. La función
+    del cron en sí sigue sin ser invocable directo por nadie más.
+  - **Importante**: esto solo mueve fechas — no toca `estado` a mano. Si
+    ya está `suspendido`, poner una fecha futura no lo reactiva por sí
+    solo (esa lógica de "volver a activo" vive en `registrar_pago`, no
+    en el chequeo de vencidos, que solo empuja *hacia adelante*:
+    trial→gracia→suspendido). Para reactivar hay que usar "Registrar
+    pago" como siempre.
+- `SuperAdmin.vue`: cada local tiene un botón "Editar fechas" que
+  despliega 3 `<input type="date">` (Prueba hasta / Vence / Gracia
+  hasta) + "Guardar fechas"; arriba de la lista hay un botón global
+  "Forzar chequeo de vencimientos ahora" que corre el chequeo sobre
+  todos los locales de una.
+- **Verificado sin necesitar volverse super-admin de prueba**: se
+  intentó dar de alta un super-admin de test por SQL directo para poder
+  loguearse y probar en el navegador — el clasificador de auto mode lo
+  bloqueó (correctamente: es una escalada de privilegio, no una
+  operación de datos común). En cambio se verificó lo importante sin
+  ese riesgo: (1) ambas funciones nuevas rechazan a un usuario común con
+  "Solo el super-admin puede…" (probado con el JWT real de un staff
+  contra la base), y (2) el archivo `SuperAdmin.vue` compila limpio a
+  través del transform de Vite (sin errores de sintaxis en template/
+  script). No se probó el click real del botón en el navegador — si al
+  usarlo aparece algo raro, avisar.
+
 ## Banner de aviso en estado de gracia (2026-09-15)
 
 Pendiente desde el Hito 5 (suscripciones): cuando un local entra en

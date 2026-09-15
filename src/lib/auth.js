@@ -168,3 +168,21 @@ export async function suspenderLocal(localId) {
   const { error } = await supabase.rpc('suspender_local', { p_local_id: localId })
   if (error) throw esp(error)
 }
+
+// Testing: mover a mano las 3 fechas de suscripción de un local (para
+// probar el banner de gracia sin esperar a que pase un mes real) y forzar
+// el chequeo diario de vencimientos sin esperar al cron.
+export async function fijarFechasLocal(localId, { trialHasta, proximoVencimiento, graciaHasta }) {
+  const { error } = await supabase.rpc('fijar_fechas_local', {
+    p_local_id: localId,
+    p_trial_hasta: trialHasta || null,
+    p_proximo_vencimiento: proximoVencimiento || null,
+    p_gracia_hasta: graciaHasta || null,
+  })
+  if (error) throw esp(error)
+}
+
+export async function forzarChequeoVencimientos() {
+  const { error } = await supabase.rpc('actualizar_estados_vencidos_ahora')
+  if (error) throw esp(error)
+}
