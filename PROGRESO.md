@@ -196,6 +196,24 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Bug real: `fecha()` de SuperAdmin mostraba un día antes (2026-09-16)
+
+Detectado por el usuario probando la herramienta de arriba: guardó
+`proximo_vencimiento = 15/09/2026`, pero el resumen de la tarjeta decía
+"Vence 14/9/2026". Causa: `new Date("2026-09-15")` sin hora se parsea
+como **UTC medianoche** — en un huso horario detrás de UTC (Argentina,
+UTC-3) eso cae en el día anterior al formatear en hora local. Los
+`<input type="date">` no tenían el bug (comparan el string tal cual, sin
+pasar por `Date`), por eso la discrepancia solo se veía en el texto de
+arriba, no en los inputs debajo. Fix: mismo patrón que ya usaban
+`BannerGracia.vue` y `AdminReportes.vue` (forzar `T00:00:00` antes de
+parsear, para que caiga en hora local en vez de UTC).
+
+De paso, aclaración importante que el usuario preguntó en el camino:
+**poner una fecha no cambia `estado` por sí solo** — hace falta apretar
+"Forzar chequeo de vencimientos ahora" para que se aplique (mismo
+comportamiento que el cron real, que solo mira fechas una vez por día).
+
 ## SuperAdmin: fechas de suscripción editables a mano, para poder probar (2026-09-15)
 
 Surgió al probar el banner de gracia: no había forma de "adelantar" el
