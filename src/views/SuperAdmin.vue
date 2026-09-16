@@ -153,7 +153,10 @@ async function salir() {
   router.push('/login')
 }
 
-const fecha = (d) => (d ? new Date(d).toLocaleDateString('es-AR') : '—')
+// `new Date("2026-09-15")` sin hora se interpreta como UTC medianoche —
+// en un huso horario detrás de UTC (como Argentina) eso muestra el día
+// anterior. Forzando una hora local (T00:00:00) se evita el corrimiento.
+const fecha = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString('es-AR') : '—')
 </script>
 
 <template>
