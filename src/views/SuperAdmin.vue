@@ -11,6 +11,7 @@ import {
   cerrarSesion,
 } from '../lib/auth'
 import { pesos } from '../lib/formato'
+import { notificarExito, notificarError } from '../lib/toast'
 
 const router = useRouter()
 
@@ -70,8 +71,9 @@ async function activar(l) {
   try {
     await activarLocal(l.local_id, precio)
     await cargar()
+    notificarExito(`"${l.local_nombre}" activado — 30 días de prueba.`)
   } catch (e) {
-    alert(e.message)
+    notificarError(e.message)
   } finally {
     accionando.value = null
   }
@@ -85,8 +87,9 @@ async function pago(l) {
   try {
     await registrarPago(l.local_id, monto)
     await cargar()
+    notificarExito('Pago registrado.')
   } catch (e) {
-    alert(e.message)
+    notificarError(e.message)
   } finally {
     accionando.value = null
   }
@@ -98,13 +101,19 @@ async function suspender(l) {
   try {
     await suspenderLocal(l.local_id)
     await cargar()
+    notificarExito(`"${l.local_nombre}" suspendido.`)
   } catch (e) {
-    alert(e.message)
+    notificarError(e.message)
   } finally {
     accionando.value = null
   }
 }
 
+// El <input type="date"> solo tiene valor cuando completaste día, mes Y
+// año — si dejás una fecha a medio escribir, v-model queda en '' sin
+// avisar nada. Por eso acá se repiten las 3 fechas tal cual quedaron
+// (con "—" si están vacías) en vez de un genérico "Guardado" — así se ve
+// al toque si una quedó vacía sin querer.
 async function guardarFechas(l) {
   const f = inputs[l.local_id].fechas
   accionando.value = l.local_id
@@ -115,8 +124,11 @@ async function guardarFechas(l) {
       graciaHasta: f.gracia_hasta,
     })
     await cargar()
+    notificarExito(
+      `Guardado — Prueba: ${fecha(f.trial_hasta)} · Vence: ${fecha(f.proximo_vencimiento)} · Gracia: ${fecha(f.gracia_hasta)}`,
+    )
   } catch (e) {
-    alert(e.message)
+    notificarError(e.message)
   } finally {
     accionando.value = null
   }
@@ -128,8 +140,9 @@ async function forzarChequeo() {
   try {
     await forzarChequeoVencimientos()
     await cargar()
+    notificarExito('Chequeo de vencimientos corrido sobre todos los locales.')
   } catch (e) {
-    alert(e.message)
+    notificarError(e.message)
   } finally {
     forzandoChequeo.value = false
   }
