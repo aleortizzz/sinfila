@@ -197,3 +197,12 @@ export async function alternarCartaLocal(localId, deshabilitada) {
   })
   if (error) throw esp(error)
 }
+
+// Historial de movimientos de un local: pagos (con % de aumento vs el
+// anterior si hubo) + eventos de suscripción (activación, gracia,
+// suspensión, carta habilitada/deshabilitada). Ver PROGRESO.md, 2026-09-18.
+export async function obtenerHistorialLocal(localId) {
+  const { data, error } = await supabase.rpc('historial_local', { p_local_id: localId })
+  if (error) throw esp(error)
+  return data ?? []
+}

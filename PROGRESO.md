@@ -196,6 +196,57 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## SuperAdmin: historial de movimientos por local (2026-09-18)
+
+Pedido: un botón en SuperAdmin que muestre fechas, pagos (con el % de
+aumento si lo hubo respecto al pago anterior) y suspensiones — "que
+quede como un registro de lo que haya pasado". Antes no existía ningún
+rastro de esto: la fila de `locales` solo guarda el estado ACTUAL
+(`activo`/`suspendido`/etc.), no cómo se llegó ahí ni cuándo.
+
+- Migración `20260918120000`: tabla nueva `locales_eventos` (`local_id`,
+  `tipo` — activacion/gracia/suspension/carta_deshabilitada/
+  carta_habilitada —, `detalle`, `creado_en`). Sin ninguna policy de RLS
+  a propósito (con RLS habilitado y cero policies, el acceso es
+  deny-all por default) — nunca se consulta directo desde el front,
+  solo a través de `historial_local()`, que ya valida
+  `es_super_admin()` por su cuenta.
+- Se instrumentaron los puntos donde ya cambiaba el estado para que
+  dejen registro: `activar_local()`, `suspender_local()` (suspensión
+  manual) y `actualizar_estados_vencidos()` (las automáticas por falta
+  de pago — las más importantes de loguear, porque nadie las dispara a
+  mano) y `alternar_carta_local()` (de la migración de hoy más
+  temprano). `registrar_pago()` no se tocó — los pagos ya quedaban en
+  `pagos_suscripcion`, se reusa esa tabla en vez de duplicar.
+- `historial_local(local_id)`: une pagos + eventos en una sola
+  cronología. El % de aumento se calcula con `lag()` sobre
+  `pagos_suscripcion.monto` ordenado por fecha, y **solo se muestra si
+  el monto subió** respecto al pago anterior (si bajó o quedó igual,
+  quiere decir null y no se lo remarca).
+- **Bug real encontrado al probar**: la función devuelve una columna de
+  salida llamada `monto` (`returns table(...)`), y Postgres expone eso
+  como una variable con ese nombre disponible dentro del cuerpo de la
+  función — cualquier referencia SIN calificar a la columna `monto` de
+  `pagos_suscripcion` quedaba ambigua contra esa variable
+  ("column reference 'monto' is ambiguous"). Se arregló calificando
+  todo con el alias de la tabla (`ps.monto`) en vez de referencias
+  sueltas — mismo tipo de gotcha que ya se había visto con
+  `security definer` y RLS, pero acá era con nombres de columnas de
+  salida de la propia función.
+- `SuperAdmin.vue`: botón "Ver historial de movimientos" por local
+  (mismo patrón de panel desplegable que "Editar fechas"), carga bajo
+  demanda la primera vez que se abre. Cada fila muestra tipo (badge de
+  color), detalle, fecha/hora, monto si es un pago, y el % de aumento
+  en verde si corresponde.
+- Probado simulando el JWT real del super-admin contra la base (sin
+  pasar por el front, mismo método usado en toda la sesión): el
+  historial devuelve los pagos reales de "Bebidas Ortiz" con los %
+  calculados correctamente (positivos cuando el monto subió, `null`
+  cuando bajó); un usuario común (staff) queda rechazado con "Solo el
+  super-admin puede ver el historial"; se probó también que
+  `alternar_carta_local()` efectivamente deja un evento nuevo en
+  `locales_eventos` — evento de prueba borrado después.
+
 ## Tarjetas de Barra/Cocina en el KDS: rediseño + bug de color encontrado (2026-09-18)
 
 Pedido tras ver las tarjetas de la vista Barra/Cocina "bastante feas".
