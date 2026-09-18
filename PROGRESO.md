@@ -196,6 +196,39 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Bug real: había que entrar en incógnito para ver un deploy nuevo (2026-09-18)
+
+Reportado por el usuario, con la preocupación correcta: "si esto escala
+a un local con 10 empleados, no puedo estar diciéndole a cada uno que
+recargue/borre caché". El sitio tiene un service worker (PWA, vía
+`vite-plugin-pwa`) para poder "agregar a inicio" en tablets — pensado
+para el día a día, no para que cada deploy sea una odisea.
+
+**Causa**: el navegador solo revisa si hay una versión nueva del service
+worker cuando hace una **navegación real** (cargar la URL de cero). Acá
+el problema es justo que esto es una SPA: alguien deja el panel/KDS
+abierto todo el día sin volver a navegar nunca de verdad (todo el
+movimiento interno es ruteo de Vue Router, no navegación de browser), así
+que ese chequeo nunca se dispara solo. `registerType: 'autoUpdate'`
+(ya estaba configurado) sí aplica la actualización y recarga solo en
+cuanto la encuentra — pero nunca la estaba buscando activamente.
+
+**Fix** en `src/main.js`: una vez que el service worker está listo, se
+fuerza `registration.update()` cada 15 minutos y además cada vez que la
+pestaña vuelve a estar visible (`visibilitychange`) — cubre tanto "lo
+dejaron abierto todo el turno" como "cambiaron de app y volvieron". No
+hizo falta tocar `vite.config.js` ni el modo de registro — el mecanismo
+de "encontrar y aplicar sola" ya estaba, solo faltaba el disparador.
+
+Nada de esto corre en `npm run dev` (el service worker solo se genera en
+build de producción) — se verificó con `npm run build` + `vite preview`:
+el SW queda activo, `registration.update()` resuelve sin error y sin
+nada en consola. No se pudo simular un ciclo completo de "deploy nuevo
+mientras un tab viejo sigue abierto" en este entorno (haría falta un
+segundo build servido en paralelo); si después del próximo deploy real
+alguien sigue viendo algo viejo pasados ~15-20 minutos, avisar para
+revisar más a fondo.
+
 ## Formulario JC Barandas: botones fijos + confirmar envío con faltantes (2026-09-18)
 
 Dos ajustes de UX pedidos después de ver el formulario armado:
