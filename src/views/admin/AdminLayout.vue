@@ -42,9 +42,18 @@ const bloqueo = computed(() => {
     return {
       titulo: 'Servicio suspendido',
       texto: 'La suscripción venció. Poneté en contacto para reanudar el servicio y volver a publicar tu carta.',
+      contacto: true,
     }
   }
   return null
+})
+
+// Número de contacto de SinFila (no del local) — para reanudar el
+// servicio desde la pantalla de bloqueo.
+const WHATSAPP_SINFILA = '5491153855217'
+const linkContactoSinfila = computed(() => {
+  const msg = encodeURIComponent(`Hola! Soy de "${local.value?.nombre ?? ''}" y quiero reactivar mi cuenta de SinFila.`)
+  return `https://wa.me/${WHATSAPP_SINFILA}?text=${msg}`
 })
 
 const NAV = [
@@ -147,7 +156,10 @@ onBeforeUnmount(() => (document.body.style.overflow = ''))
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">⏳</div>
       <h1 class="mt-3 text-xl font-bold text-slate-900">{{ bloqueo.titulo }}</h1>
       <p class="mt-2 text-sm text-slate-500">{{ bloqueo.texto }}</p>
-      <div class="mt-5 flex justify-center gap-2">
+      <div class="mt-5 flex flex-wrap justify-center gap-2">
+        <a v-if="bloqueo.contacto" :href="linkContactoSinfila" target="_blank" rel="noopener" class="btn btn-dark">
+          Contactar con SinFila
+        </a>
         <RouterLink v-if="esSuper" to="/superadmin" class="btn btn-dark">Ir a super-admin</RouterLink>
         <button type="button" @click="salir" class="btn btn-ghost">Cerrar sesión</button>
       </div>

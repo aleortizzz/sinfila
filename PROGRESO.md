@@ -196,6 +196,17 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Botón "Contactar con SinFila" en la pantalla de servicio suspendido (2026-09-18)
+
+La pantalla de bloqueo del panel ("Servicio suspendido... poneté en
+contacto") decía qué hacer pero no daba ninguna forma de hacerlo. Se
+agregó un botón que abre WhatsApp directo al número del usuario
+(no del local) con un mensaje precargado que incluye el nombre del
+local, para no tener que preguntar quién es. Mismo tratamiento para
+"pendiente de activación" quedó afuera a propósito — ese estado no le
+pide al dueño que se contacte, le avisa que va a ser SinFila quien lo
+active.
+
 ## Pendientes anotados para próximos hitos (2026-09-18)
 
 Tres ideas del usuario, todavía sin arrancar — quedan acá para no perderlas:
