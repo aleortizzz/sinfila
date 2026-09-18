@@ -57,7 +57,7 @@ const periodos = computed(() => [
 
 <template>
   <section>
-    <h1 class="text-2xl font-bold text-slate-900">Hola{{ local ? `, ${local.nombre}` : '' }} 👋</h1>
+    <h1 class="text-2xl font-bold text-slate-900">Hola{{ local ? `, ${local.nombre}` : '' }}</h1>
     <p class="mt-1 text-sm text-slate-500">Resumen de tu local. Horario de Argentina.</p>
 
     <p v-if="error" class="mt-4 text-sm text-red-600">{{ error }}</p>

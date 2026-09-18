@@ -2,7 +2,10 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter, RouterLink, RouterView } from 'vue-router'
 import { obtenerLocalPorSlug } from '../../lib/locales'
+import { suscribirseAPedidos } from '../../lib/pedidos'
+import { supabase } from '../../lib/supabase'
 import { cerrarSesion, soySuperAdmin, soyDueñoDelLocal, puedoVerFacturacion, puedoEditarMenu } from '../../lib/auth'
+import { notificarInfo } from '../../lib/toast'
 import PrimerCambioPassword from '../../components/PrimerCambioPassword.vue'
 import BannerGracia from '../../components/BannerGracia.vue'
 
@@ -12,6 +15,13 @@ const local = ref(null)
 const cargado = ref(false)
 const esSuper = ref(false)
 const permisos = ref({ dueño: false, facturacion: false, menu: false })
+
+// Aviso de "pedido nuevo" también acá, no solo en el KDS — si el dueño
+// está mirando reportes/config y le entra un pedido, se tiene que
+// enterar sin necesidad de tener esa otra pantalla abierta. Sin beep acá
+// (el KDS ya lo tiene) para no duplicar sonido si además tiene esa
+// pestaña abierta.
+let canalPedidos = null
 
 onMounted(async () => {
   const l = await obtenerLocalPorSlug(route.params.slug)
@@ -25,6 +35,11 @@ onMounted(async () => {
     ])
     esSuper.value = s
     permisos.value = { dueño, facturacion, menu }
+
+    canalPedidos = suscribirseAPedidos(l.id, (tipo, fila) => {
+      if (tipo !== 'insert') return
+      notificarInfo(`Pedido #${fila.numero} nuevo`, { duracionMs: 6000, ruta: `/panel/${route.params.slug}` })
+    })
   }
   cargado.value = true
 })
@@ -146,14 +161,21 @@ watch(menuAbierto, (v) => {
 })
 // Al navegar, cerrar el drawer.
 watch(() => route.fullPath, () => (menuAbierto.value = false))
-onBeforeUnmount(() => (document.body.style.overflow = ''))
+onBeforeUnmount(() => {
+  document.body.style.overflow = ''
+  if (canalPedidos) supabase.removeChannel(canalPedidos)
+})
 </script>
 
 <template>
   <!-- Local pendiente de activación o suspendido: pantalla de bloqueo. -->
   <div v-if="bloqueo" class="flex min-h-screen items-center justify-center bg-slate-100 p-6">
     <div class="card max-w-md p-8 text-center">
-      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">⏳</div>
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-6 w-6">
+          <path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
       <h1 class="mt-3 text-xl font-bold text-slate-900">{{ bloqueo.titulo }}</h1>
       <p class="mt-2 text-sm text-slate-500">{{ bloqueo.texto }}</p>
       <div class="mt-5 flex flex-wrap justify-center gap-2">

@@ -294,7 +294,7 @@ async function copiarMensaje() {
                   class="flex items-center gap-1.5 py-0.5 text-xs"
                   :class="activo ? 'text-slate-700' : 'text-slate-400'"
                 >
-                  <span :class="activo ? 'text-emerald-600' : 'text-slate-300'">{{ activo ? '✅' : '❌' }}</span>
+                  <span :class="activo ? 'text-emerald-600' : 'text-slate-300'">{{ activo ? '✓' : '✕' }}</span>
                   {{ CAPACIDADES[cap] }}
                 </p>
               </div>

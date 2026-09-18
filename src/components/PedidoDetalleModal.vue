@@ -66,7 +66,7 @@ const ESTADO_TXT = {
             <p class="label">Entrega</p>
             <template v-if="p.tipo_entrega === 'delivery' && p.direccion">
               <p class="mt-1 text-sm text-slate-900">
-                🛵 Delivery — {{ p.direccion.calle }} {{ p.direccion.numero }}<span v-if="p.direccion.piso_depto">, {{ p.direccion.piso_depto }}</span>
+                Delivery — {{ p.direccion.calle }} {{ p.direccion.numero }}<span v-if="p.direccion.piso_depto">, {{ p.direccion.piso_depto }}</span>
               </p>
               <p class="text-sm text-slate-500">{{ p.direccion.barrio }}</p>
               <p v-if="p.direccion.referencia" class="text-sm text-slate-500">Ref: {{ p.direccion.referencia }}</p>
@@ -74,14 +74,14 @@ const ESTADO_TXT = {
                 Ver en el mapa ↗
               </a>
             </template>
-            <p v-else class="mt-1 text-sm text-slate-900">🏠 Retiro en el local</p>
+            <p v-else class="mt-1 text-sm text-slate-900">Retiro en el local</p>
           </div>
 
           <!-- Pago -->
           <div class="mt-4">
             <p class="label">Pago</p>
             <p class="mt-1 text-sm text-slate-900">
-              {{ p.metodo_pago === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia' }}
+              {{ p.metodo_pago === 'efectivo' ? 'Efectivo' : 'Transferencia' }}
               <span v-if="p.metodo_pago === 'transferencia'" class="text-slate-500">
                 — {{ p.transferencia_avisada ? 'el cliente avisó que transfirió' : 'no avisó' }}
               </span>

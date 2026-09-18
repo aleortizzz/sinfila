@@ -196,6 +196,41 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Notificaciones: también en el panel admin, clickeables, y sin emojis (2026-09-18)
+
+Ajustes pedidos justo después de armar el toast de "nuevo pedido":
+
+- **También en el panel admin**, no solo en el KDS: si el dueño está
+  mirando Reportes/Menú/Config y entra un pedido, se tiene que enterar
+  sin tener el KDS abierto. `AdminLayout.vue` ahora también se suscribe
+  al canal de Realtime de pedidos (mismo `suscribirseAPedidos` que ya
+  usaba el KDS) y muestra el mismo toast — sin el beep, para no duplicar
+  sonido si alguien tiene las dos pestañas abiertas a la vez.
+- **Toast clickeable**: `notificar()` ahora acepta `{ duracionMs, ruta }`
+  en vez de solo una duración — si querés, un toast "sabe" a dónde
+  llevarte. El de "nuevo pedido" al clickearlo manda directo al KDS
+  (`/panel/<slug>`), con la idea de que en un negocio chico una sola
+  persona ve el aviso y quiere ir a atenderlo ya mismo.
+- **Colores pasteles** en vez de sólidos: `bg-{color}-100 text-{color}-800`
+  con un borde suave, mismo criterio que ya usan las badges de estado en
+  SuperAdmin — antes eran fondos sólidos tipo `bg-blue-600` con texto
+  blanco, mucho más pesados visualmente para algo que aparece y
+  desaparece solo.
+- **Sin emojis en toda la web**: barrida completa del código buscando
+  emoji reales (no los `✓`/`✕` sueltos que se usan como símbolo de
+  confirmar/cerrar, esos quedaron — no son pictóricos, son solo texto).
+  Se sacaron de textos de WhatsApp, tarjetas del KDS, mensajes de
+  seguimiento de pedido, etc. Los que funcionaban como ícono decorativo
+  dentro de un círculo de color (📧 en Recuperar/Registro, ⏳ en la
+  pantalla de bloqueo del panel, ✅ en el "gracias" del formulario de
+  JC Barandas) se reemplazaron por íconos SVG en línea, mismo estilo
+  que ya usan los íconos del nav (`stroke="currentColor"`, sin relleno)
+  — no quedaron huecos vacíos donde antes había algo.
+- Probado con Playwright: el toast aparece con los colores nuevos
+  mientras se navega Reportes (no el KDS), y clickearlo efectivamente
+  manda a `/panel/<slug>`. `npm run build` corrido sin errores después
+  de tocar 12 archivos.
+
 ## Notificación in-app de "nuevo pedido" en el KDS (2026-09-18)
 
 Primer paso del pedido de "notificaciones tipo popup" — sin push real

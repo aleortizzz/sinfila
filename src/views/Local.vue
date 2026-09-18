@@ -76,7 +76,7 @@ async function onCambioPedido(tipo, fila) {
     if (completo && !pedidosPorId.has(completo.id)) {
       pedidosPorId.set(completo.id, completo)
       reproducirBeep()
-      notificarInfo(`🆕 Pedido #${completo.numero} nuevo`, 6000)
+      notificarInfo(`Pedido #${completo.numero} nuevo`, { duracionMs: 6000, ruta: `/panel/${route.params.slug}` })
     }
     return
   }
@@ -193,7 +193,7 @@ async function entregar(p) {
 function linkWhatsapp(p) {
   const tel = p.telefono_cliente.replace(/\D/g, '')
   const msg = encodeURIComponent(
-    `Hola ${p.nombre_cliente}! Tu pedido #${p.numero} en ${local.value.nombre} ya está listo para retirar 🎉`,
+    `Hola ${p.nombre_cliente}! Tu pedido #${p.numero} en ${local.value.nombre} ya está listo para retirar.`,
   )
   return `https://wa.me/${tel}?text=${msg}`
 }
@@ -264,11 +264,11 @@ async function salir() {
               <p class="mt-2 font-semibold text-slate-900">{{ p.nombre_cliente }}</p>
               <p class="text-sm text-slate-500">{{ p.telefono_cliente }}</p>
               <p class="mt-1 text-sm text-slate-500">
-                {{ p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏠 Retiro' }}
+                {{ p.tipo_entrega === 'delivery' ? 'Delivery' : 'Retiro' }}
                 <span v-if="p.tipo_entrega === 'delivery'">— {{ p.direccion_calle }} {{ p.direccion_numero }}, {{ p.direccion_barrio }}</span>
               </p>
               <p class="text-sm text-slate-500">
-                {{ p.metodo_pago === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia' }}
+                {{ p.metodo_pago === 'efectivo' ? 'Efectivo' : 'Transferencia' }}
                 <span v-if="p.metodo_pago === 'transferencia'">
                   {{ p.transferencia_avisada ? '· avisó que transfirió' : '· todavía no avisó' }}
                 </span>
@@ -302,10 +302,10 @@ async function salir() {
 
                 <template v-else-if="p.estado === 'en_preparacion'">
                   <span v-if="p.requiere_barra" :class="p.barra_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
-                    {{ p.barra_lista ? '✓ Barra lista' : '⏳ Falta barra' }}
+                    {{ p.barra_lista ? '✓ Barra lista' : 'Falta barra' }}
                   </span>
                   <span v-if="p.requiere_cocina" :class="p.cocina_lista ? 'text-green-700' : 'text-slate-500'" class="text-sm">
-                    {{ p.cocina_lista ? '✓ Cocina lista' : '⏳ Falta cocina' }}
+                    {{ p.cocina_lista ? '✓ Cocina lista' : 'Falta cocina' }}
                   </span>
                 </template>
 

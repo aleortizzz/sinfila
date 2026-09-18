@@ -137,7 +137,11 @@ async function enviarAhora() {
 
       <!-- Gracias -->
       <div v-if="enviado" class="mx-auto mt-10 max-w-lg rounded-2xl bg-white p-8 text-center text-slate-900 shadow-xl">
-        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-3xl">✅</div>
+        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-7 w-7">
+            <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
         <h2 class="mt-4 text-xl font-bold">¡Gracias por completar el formulario!</h2>
         <p class="mt-2 text-sm text-slate-500">
           Ya recibimos tus respuestas. Con esta información vamos a mejorar los títulos, textos y estructura de

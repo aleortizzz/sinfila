@@ -40,7 +40,7 @@ const fechaTexto = computed(() => {
     v-if="local?.estado === 'gracia'"
     class="border-b-2 border-amber-300 bg-amber-50 px-4 py-2.5 text-center text-sm font-medium text-amber-800"
   >
-    ⚠️ Tu suscripción venció y estás en período de gracia.
+    Tu suscripción venció y estás en período de gracia.
     <span v-if="fechaLimite">Tenés hasta el {{ fechaTexto }} ({{ textoDias }})</span>
     para regularizar el pago — después el servicio se suspende y la carta deja de verse.
   </div>

@@ -61,8 +61,8 @@ const mensajePrincipal = computed(() => {
     pendiente: 'Recibimos tu pedido, estamos confirmándolo.',
     en_preparacion: 'Lo estamos preparando.',
     listo: delivery ? 'Ya casi sale hacia tu casa.' : 'Ya casi está.',
-    avisado: delivery ? '¡Va en camino! 🛵' : '¡Listo! Pasá a buscarlo. 🎉',
-    entregado: delivery ? '¡Entregado! Buen provecho 🎉' : '¡Retirado! Buen provecho 🎉',
+    avisado: delivery ? '¡Va en camino!' : '¡Listo! Pasá a buscarlo.',
+    entregado: delivery ? '¡Entregado! Buen provecho.' : '¡Retirado! Buen provecho.',
     cancelado: 'Este pedido fue cancelado.',
     rechazado: 'El local no pudo tomar este pedido.',
   }[pedido.value.estado]

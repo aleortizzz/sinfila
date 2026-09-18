@@ -1,11 +1,21 @@
 <script setup>
+import { useRouter } from 'vue-router'
 import { toasts } from '../lib/toast'
 
+const router = useRouter()
+
+// Colores pasteles (fondo clarito + texto oscuro del mismo tono) en vez de
+// los sólidos de antes — mismo criterio que usan las badges de estado en
+// el resto del panel (ej. SuperAdmin).
 const ESTILOS = {
-  exito: 'bg-emerald-600',
-  error: 'bg-red-600',
-  advertencia: 'bg-amber-500',
-  info: 'bg-blue-600',
+  exito: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  error: 'bg-red-100 text-red-800 border border-red-200',
+  advertencia: 'bg-amber-100 text-amber-800 border border-amber-200',
+  info: 'bg-blue-100 text-blue-800 border border-blue-200',
+}
+
+function click(t) {
+  if (t.ruta) router.push(t.ruta)
 }
 </script>
 
@@ -14,7 +24,12 @@ const ESTILOS = {
     <TransitionGroup name="toast">
       <div
         v-for="t in toasts" :key="t.id"
-        :class="['pointer-events-auto rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-lg', ESTILOS[t.tipo] || ESTILOS.exito]"
+        @click="click(t)"
+        :class="[
+          'pointer-events-auto rounded-lg px-4 py-2.5 text-sm font-medium shadow-lg',
+          ESTILOS[t.tipo] || ESTILOS.exito,
+          t.ruta && 'cursor-pointer hover:brightness-95',
+        ]"
       >
         {{ t.mensaje }}
       </div>
