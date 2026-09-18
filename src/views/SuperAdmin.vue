@@ -8,6 +8,7 @@ import {
   suspenderLocal,
   fijarFechasLocal,
   forzarChequeoVencimientos,
+  alternarCartaLocal,
   cerrarSesion,
 } from '../lib/auth'
 import { pesos } from '../lib/formato'
@@ -96,12 +97,37 @@ async function pago(l) {
 }
 
 async function suspender(l) {
-  if (!confirm(`¿Suspender "${l.local_nombre}"? La carta queda offline y el dueño no puede operar.`)) return
+  if (
+    !confirm(
+      `¿Suspender "${l.local_nombre}"? Deja de poder recibir pedidos y el dueño no puede operar el panel — pero la carta se sigue viendo, marcada como cerrada.`,
+    )
+  )
+    return
   accionando.value = l.local_id
   try {
     await suspenderLocal(l.local_id)
     await cargar()
     notificarExito(`"${l.local_nombre}" suspendido.`)
+  } catch (e) {
+    notificarError(e.message)
+  } finally {
+    accionando.value = null
+  }
+}
+
+async function alternarCarta(l) {
+  const activar = l.carta_deshabilitada
+  if (
+    !activar &&
+    !confirm(`¿Deshabilitar la carta de "${l.local_nombre}"? Deja de verse del todo (como si el local no existiera), sin importar el estado de la suscripción.`)
+  ) {
+    return
+  }
+  accionando.value = l.local_id
+  try {
+    await alternarCartaLocal(l.local_id, !activar)
+    await cargar()
+    notificarExito(activar ? `Carta de "${l.local_nombre}" habilitada.` : `Carta de "${l.local_nombre}" deshabilitada.`)
   } catch (e) {
     notificarError(e.message)
   } finally {
@@ -195,6 +221,9 @@ const fecha = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocal
                   <span :class="['rounded-full px-2 py-0.5 text-[11px] font-semibold', ESTADOS[l.estado]?.cls]">
                     {{ ESTADOS[l.estado]?.txt ?? l.estado }}
                   </span>
+                  <span v-if="l.carta_deshabilitada" class="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-white">
+                    Carta deshabilitada
+                  </span>
                 </div>
                 <p class="text-xs text-slate-500">{{ l.negocio_nombre }} · {{ l.email_contacto }}</p>
                 <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
@@ -246,6 +275,14 @@ const fecha = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocal
                     Suspender
                   </button>
                 </template>
+                <button
+                  type="button"
+                  :disabled="accionando === l.local_id"
+                  @click="alternarCarta(l)"
+                  class="btn border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  {{ l.carta_deshabilitada ? 'Habilitar carta' : 'Deshabilitar carta' }}
+                </button>
                 <button type="button" @click="toggleFechas(l.local_id)" class="btn btn-ghost px-3 py-2 text-xs">
                   {{ fechasAbiertas.has(l.local_id) ? 'Cerrar fechas' : 'Editar fechas' }}
                 </button>

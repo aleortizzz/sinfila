@@ -177,9 +177,13 @@ async function cargar(slug) {
       return
     }
     cart.inicializarParaLocal(slug)
+    // Un local "suspendido" (venció la suscripción) sigue mostrando la
+    // carta, pero permanentemente cerrado para pedidos — no tiene sentido
+    // consultar el horario del día, siempre da cerrado independientemente
+    // de la hora.
     const [menu, ab, hs, prs] = await Promise.all([
       obtenerMenu(local.value.id),
-      estaAbierto(local.value.id).catch(() => true),
+      local.value.estado === 'suspendido' ? Promise.resolve(false) : estaAbierto(local.value.id).catch(() => true),
       obtenerHorarios(local.value.id).catch(() => []),
       obtenerPromosVigentes(local.value.id).catch(() => []),
     ])
@@ -267,23 +271,29 @@ onBeforeUnmount(() => observer?.disconnect())
       <!-- Aviso de local cerrado -->
       <div v-if="!abierto" class="mx-auto mt-4 max-w-5xl px-5">
         <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p class="text-sm font-semibold text-amber-900">El local está cerrado en este momento</p>
-          <p class="mt-0.5 text-sm text-amber-800">
-            Podés mirar la carta, pero no se pueden hacer pedidos hasta que abra.
-          </p>
-          <details v-if="horarios.length" class="mt-2 text-sm text-amber-900">
-            <summary class="cursor-pointer font-medium">Ver horarios</summary>
-            <ul class="mt-2 space-y-0.5">
-              <li
-                v-for="h in horariosOrdenados"
-                :key="h.dia"
-                :class="['flex justify-between', h.dia === hoyDow && 'font-semibold']"
-              >
-                <span>{{ DIAS[h.dia] }}{{ h.dia === hoyDow ? ' (hoy)' : '' }}</span>
-                <span>{{ textoHorario(h) }}</span>
-              </li>
-            </ul>
-          </details>
+          <template v-if="local.estado === 'suspendido'">
+            <p class="text-sm font-semibold text-amber-900">Este local no está aceptando pedidos por el momento</p>
+            <p class="mt-0.5 text-sm text-amber-800">Podés mirar la carta, pero por ahora no se pueden hacer pedidos.</p>
+          </template>
+          <template v-else>
+            <p class="text-sm font-semibold text-amber-900">El local está cerrado en este momento</p>
+            <p class="mt-0.5 text-sm text-amber-800">
+              Podés mirar la carta, pero no se pueden hacer pedidos hasta que abra.
+            </p>
+            <details v-if="horarios.length" class="mt-2 text-sm text-amber-900">
+              <summary class="cursor-pointer font-medium">Ver horarios</summary>
+              <ul class="mt-2 space-y-0.5">
+                <li
+                  v-for="h in horariosOrdenados"
+                  :key="h.dia"
+                  :class="['flex justify-between', h.dia === hoyDow && 'font-semibold']"
+                >
+                  <span>{{ DIAS[h.dia] }}{{ h.dia === hoyDow ? ' (hoy)' : '' }}</span>
+                  <span>{{ textoHorario(h) }}</span>
+                </li>
+              </ul>
+            </details>
+          </template>
         </div>
       </div>
 

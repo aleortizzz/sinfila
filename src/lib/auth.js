@@ -186,3 +186,14 @@ export async function forzarChequeoVencimientos() {
   const { error } = await supabase.rpc('actualizar_estados_vencidos_ahora')
   if (error) throw esp(error)
 }
+
+// Ocultar/mostrar la carta pública de un local, independiente de la
+// suscripción — para cuando el super-admin necesita bajarla a mano
+// (pedido del dueño, disputa, etc.), sin tocar el estado de facturación.
+export async function alternarCartaLocal(localId, deshabilitada) {
+  const { error } = await supabase.rpc('alternar_carta_local', {
+    p_local_id: localId,
+    p_deshabilitada: deshabilitada,
+  })
+  if (error) throw esp(error)
+}

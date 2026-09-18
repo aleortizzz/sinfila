@@ -196,6 +196,65 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## La carta ya no desaparece cuando un local está suspendido (2026-09-18)
+
+Reportado por el usuario probando con "Bebidas Ortiz" (real, quedó
+`suspendido` de tanto probar la herramienta de fechas): esperaba ver la
+carta caída, pero seguía viéndola — porque estaba logueado como
+dueño/staff de ese local en ese navegador, y la policy de `locales` deja
+ver tu propio local sin importar el estado (para poder entrar a la
+pantalla de "pagá para reanudar" en el panel). Confirmado con un `curl`
+anónimo de verdad (sin su sesión): antes de este cambio devolvía `[]`
+—no encontramos este local—, igual que si el local nunca hubiera
+existido.
+
+Cambio de diseño pedido: que un local `suspendido` **no desaparezca**
+de la carta pública — que se siga viendo, marcada como cerrada, para no
+confundir a un cliente que tenía el link guardado (no es que el negocio
+cerró para siempre, es un tema de facturación). Separado de esto, un
+control nuevo y exclusivo del super-admin para bajar la carta del todo
+cuando de verdad haga falta (pedido del dueño, disputa), independiente
+del estado de la suscripción.
+
+- Migración `20260918110000`: columna `carta_deshabilitada` en
+  `locales` (default `false`). `local_visible_publicamente()` ahora
+  también incluye `suspendido` (antes solo trial/activo/gracia), y
+  además exige `not carta_deshabilitada`. **`crear_pedido()` no
+  cambió su chequeo** (sigue rechazando cualquier estado que no sea
+  trial/activo/gracia) — o sea que ahora se puede VER la carta de un
+  local suspendido, pero seguir sin poder pedir, verificado con un
+  intento de pedido real vía API: `"Local no disponible"`. Se sumó
+  además el chequeo de `carta_deshabilitada` a `crear_pedido` por las
+  dudas.
+- **Bug real encontrado en el camino** (migración `20260918111500` +
+  fix en `20260918112000`): la policy de `SELECT` de la propia tabla
+  `locales` tenía su condición hardcodeada, sin pasar por
+  `local_visible_publicamente()` — al unificarla para que si pase por
+  ahí, la función (que no era `security definer`) volvía a evaluar la
+  misma policy al consultarse a sí misma dentro de su propio `select`,
+  entrando en loop infinito (`stack depth limit exceeded`). Fix: la
+  función pasa a `security definer` — mismo patrón que ya usan
+  `rol_en_local`/`es_super_admin` y por la misma razón (evitar que una
+  función se pise con la RLS de la tabla que consulta).
+- `Carta.vue`/`Checkout.vue`: cuando `estado === 'suspendido'`, se
+  fuerza `abierto = false` (sin ni siquiera consultar el horario del
+  día) y se muestra un mensaje específico ("Este local no está
+  aceptando pedidos por el momento") en vez del genérico de "cerrado
+  ahora, abre a tal hora" — reutiliza el mismo mecanismo de `:cerrado`
+  que ya deshabilita "agregar al carrito" y el checkout.
+- `SuperAdmin.vue`: botón "Deshabilitar carta" / "Habilitar carta" por
+  local (RPC `alternar_carta_local`, guardado con `es_super_admin()`) +
+  badge "Carta deshabilitada" cuando está activo.
+- **Probado con curl anónimo real** (sin sesión) contra `bar-de-prueba`
+  (suspendido de verdad en producción): local y categorías visibles
+  ✅; intento de `crear_pedido` rechazado con "Local no disponible" ✅;
+  con `carta_deshabilitada=true` vuelve a devolver `[]` (desaparece del
+  todo) ✅. Visualmente con Playwright en un contexto sin cookies: se
+  ve el menú completo con el banner de "no acepta pedidos". Se revirtió
+  `carta_deshabilitada` a `false` al terminar (el `estado=suspendido`
+  real del local se dejó tal cual estaba, es dato real de las pruebas
+  del usuario).
+
 ## Bug real: había que entrar en incógnito para ver un deploy nuevo (2026-09-18)
 
 Reportado por el usuario, con la preocupación correcta: "si esto escala

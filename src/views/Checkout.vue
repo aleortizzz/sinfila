@@ -81,6 +81,10 @@ onMounted(async () => {
       error.value = 'No encontramos este local.'
       return
     }
+    if (local.value.estado === 'suspendido') {
+      error.value = 'Este local no está aceptando pedidos por el momento.'
+      return
+    }
     if (!(await estaAbierto(local.value.id).catch(() => true))) {
       error.value = 'El local está cerrado en este momento. Volvé cuando abra para hacer tu pedido.'
       return
