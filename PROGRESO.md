@@ -196,6 +196,37 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Notificación in-app de "nuevo pedido" en el KDS (2026-09-18)
+
+Primer paso del pedido de "notificaciones tipo popup" — sin push real
+todavía (eso necesita un backend con claves VAPID, es harina de otro
+costal). Reusa dos cosas que ya existían: el canal de Realtime del KDS
+(`suscribirseAPedidos`, que ya disparaba un beep en cada pedido nuevo) y
+el sistema de toasts armado para Equipo/SuperAdmin.
+
+- `lib/toast.js`: nuevo tipo `notificarInfo` — mismo look que
+  éxito/error/advertencia pero con su propio color (azul), para
+  distinguir "esto le pasó al usuario" (llegó algo) de "el usuario hizo
+  algo y salió bien". De paso, los 4 helpers (`notificarExito` incluido)
+  ahora aceptan una duración opcional — antes estaba hardcodeada a 3s en
+  `notificar()`, sin forma de pedir más tiempo desde afuera.
+- `Local.vue`: en el `insert` de `onCambioPedido`, junto al beep que ya
+  sonaba, un toast "🆕 Pedido #N nuevo" con 6 segundos de duración (más
+  que el default, para que dé tiempo a leerlo en un mostrador con
+  ruido/movimiento).
+- Se había considerado también un aviso de "cliente avisó que
+  transfirió" (`transferencia_avisada`), pero esa columna existe en la
+  base y se MUESTRA en el KDS, pero **nada la pone en `true` todavía**
+  — no hay ninguna acción de cliente que la dispare. Se descartó por
+  ahora en vez de dejar código que nunca puede correr; queda para
+  cuando exista esa pantalla del lado del cliente.
+- Probado con Playwright creando pedidos reales vía `crear_pedido()`
+  mientras el KDS estaba abierto (local temporalmente reactivado para
+  la prueba, ya que "Bebidas Ortiz" sigue suspendido de pruebas
+  anteriores — revertido a `suspendido` al terminar): el toast aparece
+  al toque y desaparece a los 6s, coincidiendo justo con la duración
+  pedida. Pedidos de prueba borrados de la base al terminar.
+
 ## Botón "Contactar con SinFila" en la pantalla de servicio suspendido (2026-09-18)
 
 La pantalla de bloqueo del panel ("Servicio suspendido... poneté en

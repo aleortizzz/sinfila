@@ -5,6 +5,7 @@ const ESTILOS = {
   exito: 'bg-emerald-600',
   error: 'bg-red-600',
   advertencia: 'bg-amber-500',
+  info: 'bg-blue-600',
 }
 </script>
 

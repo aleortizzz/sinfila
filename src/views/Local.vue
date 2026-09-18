@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { cerrarSesion, soyDueñoDelLocal, puedoVerFacturacion, puedoEditarMenu } from '../lib/auth'
 import PrimerCambioPassword from '../components/PrimerCambioPassword.vue'
 import BannerGracia from '../components/BannerGracia.vue'
+import { notificarInfo } from '../lib/toast'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,6 +76,7 @@ async function onCambioPedido(tipo, fila) {
     if (completo && !pedidosPorId.has(completo.id)) {
       pedidosPorId.set(completo.id, completo)
       reproducirBeep()
+      notificarInfo(`🆕 Pedido #${completo.numero} nuevo`, 6000)
     }
     return
   }

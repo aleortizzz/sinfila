@@ -17,6 +17,10 @@ export function notificar(tipo, mensaje, duracionMs = 3000) {
   }, duracionMs)
 }
 
-export const notificarExito = (mensaje) => notificar('exito', mensaje)
-export const notificarError = (mensaje) => notificar('error', mensaje)
-export const notificarAdvertencia = (mensaje) => notificar('advertencia', mensaje)
+export const notificarExito = (mensaje, duracionMs) => notificar('exito', mensaje, duracionMs)
+export const notificarError = (mensaje, duracionMs) => notificar('error', mensaje, duracionMs)
+export const notificarAdvertencia = (mensaje, duracionMs) => notificar('advertencia', mensaje, duracionMs)
+// "info": eventos que le pasan al usuario, no resultado de una acción suya
+// (ej. "llegó un pedido nuevo") — mismo look, pero un color propio para no
+// confundirlo con "guardaste algo y salió bien".
+export const notificarInfo = (mensaje, duracionMs) => notificar('info', mensaje, duracionMs)
