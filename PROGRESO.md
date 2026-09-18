@@ -196,6 +196,38 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Pendientes anotados para próximos hitos (2026-09-18)
+
+Tres ideas del usuario, todavía sin arrancar — quedan acá para no perderlas:
+
+1. **Notificaciones en el panel** (tipo popup, unos segundos, para cosas
+   como "Nuevo pedido") + aprovechar que ya es una PWA para que también
+   dispare una **notificación push** del sistema operativo (útil para
+   cuando el staff no tiene la pestaña activa). Requiere: permiso de
+   notificaciones del navegador, un Service Worker que escuche push (el
+   que ya existe es de `vite-plugin-pwa`/Workbox, habría que sumarle un
+   listener de `push`), y un backend que dispare el push real (Web Push
+   necesita un servidor con las claves VAPID — no es gratis "solo
+   frontend"). Las de tipo popup in-app (sin push real) son mucho más
+   simples: ya existe el sistema de toasts (`lib/toast.js`) y el canal
+   de Realtime de pedidos (`suscribirseAPedidos`) — podría ser un primer
+   paso chico antes de meterse con push de verdad.
+2. **Stock/inventario** — reconfirmado que sigue para más adelante (ver
+   la discusión original al principio del proyecto).
+3. **Avisos de WhatsApp automáticos al cliente** por cambio de estado
+   del pedido ("tu pedido está en preparación", "pasá a retirarlo") —
+   distinto de los botones manuales que ya existen ("Avisar por
+   WhatsApp", que abren un link para que alguien del staff apriete
+   enviar). Para que salga solo hace falta la WhatsApp Business API
+   (Meta directo o un proveedor tipo Twilio): cuenta de negocio
+   verificada en Meta, número dedicado a enviar, y **plantillas de
+   mensaje pre-aprobadas** por Meta si el cliente no le escribió primero
+   al número del negocio (no se puede mandar texto libre sin plantilla
+   fuera de esa ventana). Tiene costo por conversación. Esto requiere
+   una decisión de negocio (qué proveedor, dar de alta y verificar la
+   cuenta) antes de poder empezar la parte técnica (trigger en
+   `pedidos.estado` → webhook → API de Meta/Twilio).
+
 ## La carta ya no desaparece cuando un local está suspendido (2026-09-18)
 
 Reportado por el usuario probando con "Bebidas Ortiz" (real, quedó
