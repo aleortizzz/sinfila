@@ -196,6 +196,17 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Formulario JC Barandas: pregunta "envíos al interior" (2026-09-18)
+
+Se sumó `envios_interior` a la sección de zona geográfica, justo después
+de `disponibilidad_viajar` (misma sección, pregunta hermana): distingue
+"viajar a instalar" de "enviar el producto para que lo instale alguien
+de la zona" — son dos modelos de negocio distintos con búsquedas de
+Google distintas. Solo tocó el dato estático
+(`src/data/jcbarandasSeoForm.js`); la tabla guarda todo en un jsonb
+freeform, así que una pregunta nueva no pisa ni rompe respuestas ya
+guardadas (ni las que estén en curso en el localStorage de alguien).
+
 ## Formulario JC Barandas: "Guardar progreso" (2026-09-18)
 
 Pedido inmediato después de armar el formulario: al ser ~35 preguntas

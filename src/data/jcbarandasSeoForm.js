@@ -58,6 +58,18 @@ export const JCBARANDAS_SEO_FORM = {
           helpText: 'Define si conviene mostrar un mensaje del tipo "trabajos a medida en toda la provincia" o mantener el foco 100% local.',
           required: true,
         },
+        {
+          id: 'envios_interior',
+          label: '¿Hacen envíos del producto terminado al interior del país (aunque no viajen ustedes a instalarlo)?',
+          type: 'single_select',
+          options: [
+            { value: 'si_envio_e_instalacion_terceros', label: 'Sí, enviamos y coordinamos instalación con alguien de la zona' },
+            { value: 'si_solo_envio', label: 'Sí, solo enviamos el producto, la instalación corre por cuenta del cliente' },
+            { value: 'no', label: 'No, solo trabajamos con instalación propia en nuestra zona' },
+          ],
+          helpText: "Es una modalidad de negocio distinta a viajar a instalar, y responde a una búsqueda de Google distinta ('barandas de vidrio envío a todo el país'). Si la respuesta es 'no' a esta y a la anterior, no hace falta mencionar cobertura nacional en ningún lado del sitio.",
+          required: true,
+        },
       ],
     },
     {
