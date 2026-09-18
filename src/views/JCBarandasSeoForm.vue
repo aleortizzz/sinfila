@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { supabase } from '../lib/supabase'
-import { notificarError } from '../lib/toast'
+import { notificarError, notificarExito } from '../lib/toast'
 import { JCBARANDAS_SEO_FORM } from '../data/jcbarandasSeoForm'
 
 // Formulario aislado para un cliente externo (jcbarandas.com.ar, sitio
@@ -10,6 +10,18 @@ import { JCBARANDAS_SEO_FORM } from '../data/jcbarandasSeoForm'
 // compartida, ni RLS que dependa de usuario_local_roles. Ver
 // PROGRESO.md, 2026-09-18.
 
+// Es un formulario largo (~35 preguntas) sin cuenta/login de por medio,
+// así que "guardar progreso" es local al navegador (localStorage), no al
+// servidor — alcanza para que la misma persona lo retome más tarde en el
+// mismo dispositivo, sin la complejidad de manejar borradores en la base.
+const CLAVE_PROGRESO = 'jcb_seo_progreso'
+
+const respuestas = reactive({})
+const enviando = ref(false)
+const enviado = ref(false)
+const erroresVisibles = ref(false)
+const progresoRestaurado = ref(false)
+
 onMounted(() => {
   if (document.getElementById('jcb-font-figtree')) return
   const link = document.createElement('link')
@@ -17,12 +29,26 @@ onMounted(() => {
   link.rel = 'stylesheet'
   link.href = 'https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap'
   document.head.appendChild(link)
+
+  try {
+    const guardado = localStorage.getItem(CLAVE_PROGRESO)
+    if (guardado) {
+      Object.assign(respuestas, JSON.parse(guardado))
+      progresoRestaurado.value = true
+    }
+  } catch {
+    // localStorage puede fallar (privado/bloqueado) — no es bloqueante, sigue sin restaurar nada.
+  }
 })
 
-const respuestas = reactive({})
-const enviando = ref(false)
-const enviado = ref(false)
-const erroresVisibles = ref(false)
+function guardarProgreso() {
+  try {
+    localStorage.setItem(CLAVE_PROGRESO, JSON.stringify(respuestas))
+    notificarExito('Progreso guardado en este navegador. Podés cerrar la página y volver cuando quieras.')
+  } catch {
+    notificarError('No pudimos guardar el progreso en este navegador (¿estás en modo privado?).')
+  }
+}
 
 function setValor(id, valor) {
   respuestas[id] = valor
@@ -63,6 +89,11 @@ async function enviar() {
     const { error } = await supabase.from('jcbarandas_seo_respuestas').insert({ respuestas: { ...respuestas } })
     if (error) throw error
     enviado.value = true
+    try {
+      localStorage.removeItem(CLAVE_PROGRESO)
+    } catch {
+      // no-op — si falló guardar, tampoco hay nada que limpiar
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
     notificarError('No pudimos guardar las respuestas. Probá de nuevo en un momento — si sigue fallando, avisanos por WhatsApp.')
@@ -80,6 +111,10 @@ async function enviar() {
         <h1 class="mt-2 text-2xl font-extrabold text-white sm:text-3xl">{{ JCBARANDAS_SEO_FORM.meta.formTitle }}</h1>
         <p class="mx-auto mt-3 max-w-xl text-sm text-slate-400">{{ JCBARANDAS_SEO_FORM.meta.formDescription }}</p>
       </header>
+
+      <p v-if="progresoRestaurado && !enviado" class="mx-auto mt-4 max-w-lg rounded-lg bg-blue-500/10 px-4 py-2 text-center text-xs text-blue-300">
+        Recuperamos el progreso que habías guardado en este navegador.
+      </p>
 
       <!-- Gracias -->
       <div v-if="enviado" class="mx-auto mt-10 max-w-lg rounded-2xl bg-white p-8 text-center text-slate-900 shadow-xl">
@@ -168,7 +203,10 @@ async function enviar() {
           </div>
         </section>
 
-        <div class="flex justify-center pb-4 pt-2">
+        <div class="flex flex-wrap justify-center gap-3 pb-4 pt-2">
+          <button type="button" @click="guardarProgreso" class="jcb-secondary">
+            Guardar progreso
+          </button>
           <button type="submit" :disabled="enviando" class="jcb-submit">
             {{ enviando ? 'Enviando…' : 'Enviar respuestas' }}
           </button>
@@ -208,5 +246,17 @@ async function enviar() {
 .jcb-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.jcb-secondary {
+  border-radius: 9999px;
+  background: transparent;
+  border: 1.5px solid #475569;
+  color: #cbd5e1;
+  font-weight: 600;
+  padding: 0.75rem 1.75rem;
+}
+.jcb-secondary:hover {
+  border-color: #2563eb;
+  color: white;
 }
 </style>

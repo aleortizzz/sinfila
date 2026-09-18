@@ -196,6 +196,20 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Formulario JC Barandas: "Guardar progreso" (2026-09-18)
+
+Pedido inmediato después de armar el formulario: al ser ~35 preguntas
+sin login de por medio, hace falta poder cortar a mitad de camino y
+retomar después. Como es una sola persona respondiendo (no hace falta
+sincronizar entre dispositivos), el progreso se guarda en
+`localStorage` del navegador, no en la base — evita la complejidad de
+manejar "borradores" en `jcbarandas_seo_respuestas` para un caso de uso
+tan chico. Al entrar a la página se restaura solo si hay algo guardado
+(con un aviso arriba de "Recuperamos tu progreso"), y se borra
+automáticamente al enviar el formulario completo. Probado con
+Playwright: guardar → recargar → los valores vuelven tal cual quedaron;
+enviar → `localStorage` queda limpio.
+
 ## Formulario de SEO para JC Barandas — feature aislado, sin relación con SinFila (2026-09-18)
 
 Pedido puntual: el usuario tiene un cliente externo (`jcbarandas.com.ar`,
