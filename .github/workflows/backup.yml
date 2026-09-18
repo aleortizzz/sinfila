@@ -1,0 +1,78 @@
+name: Backup diario de Supabase
+
+# Corre todos los días a las 6:00 UTC (3:00 AM Argentina) + disparo manual.
+# El dump NUNCA vive en este repo (es público/con colaboradores) — se
+# empuja directo al repo privado tizdigital-backups, en una carpeta propia
+# de este proyecto.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+env:
+  PROYECTO: sinfila
+  BACKUPS_REPO: aleortizzz/tizdigital-backups
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      # El postgresql-client de los repos de Ubuntu suele quedar atrasado
+      # respecto a la versión de Postgres que corre Supabase — pg_dump
+      # rechaza dumpear un server más nuevo que el cliente. Se instala
+      # postgresql-client-17 directo del repo oficial de PGDG.
+      - name: Instalar postgresql-client-17 (PGDG)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg lsb-release
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      # Variables sueltas (no un connection string) a propósito: si la
+      # contraseña tiene "$" u otro carácter especial, el parseo de un URI
+      # único se rompe. pg_dump lee PGHOST/PGPORT/etc. directo.
+      - name: Dump del schema public
+        env:
+          PGHOST: ${{ secrets.SUPA_HOST }}
+          PGPORT: ${{ secrets.SUPA_PORT }}
+          PGDATABASE: postgres
+          PGUSER: ${{ secrets.SUPA_USER }}
+          PGPASSWORD: ${{ secrets.SUPA_PASSWORD }}
+          PGSSLMODE: require
+        run: |
+          set -o pipefail
+          mkdir -p dump
+          FECHA=$(date +%F)
+          pg_dump --schema=public --no-owner --no-privileges | gzip > "dump/${FECHA}.sql.gz"
+          # Chequeo explícito: si pg_dump falla mid-stream, gzip igual
+          # puede "salir bien" con un archivo casi vacío — esto lo hace
+          # visible en el log en vez de quedar tapado.
+          ls -la dump/
+
+      - name: Clonar tizdigital-backups
+        run: |
+          git clone "https://x-access-token:${{ secrets.BACKUP_TOKEN }}@github.com/${BACKUPS_REPO}.git" backups-repo
+
+      - name: Copiar dump y rotar (quedarse con los últimos 7 días)
+        run: |
+          FECHA=$(date +%F)
+          mkdir -p "backups-repo/${PROYECTO}/db"
+          cp "dump/${FECHA}.sql.gz" "backups-repo/${PROYECTO}/db/${FECHA}.sql.gz"
+          cd "backups-repo/${PROYECTO}/db"
+          ls -1 *.sql.gz | sort | head -n -7 | xargs -r rm -f
+          ls -la
+
+      - name: Commit y push a tizdigital-backups
+        run: |
+          cd backups-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${PROYECTO}/db"
+          if git diff --cached --quiet; then
+            echo "Sin cambios (¿el dump de hoy es igual al de ayer?)"
+          else
+            git commit -m "Backup ${PROYECTO} $(date +%F)"
+            git push
+          fi

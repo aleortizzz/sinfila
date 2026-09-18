@@ -196,6 +196,44 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Backup diario automático a `tizdigital-backups` (2026-09-18)
+
+Pedido explícito del usuario, con un patrón ya probado en otro proyecto
+suyo (calcado tal cual, no rediseñado): `.github/workflows/backup.yml`
+corre todos los días a las 6:00 UTC (3 AM Argentina) + disparo manual
+(`workflow_dispatch`).
+
+- Instala `postgresql-client-17` desde el repo oficial de PGDG (el de
+  Ubuntu por default queda atrasado respecto a la versión de Postgres
+  que corre Supabase, y `pg_dump` rechaza dumpear un server más nuevo
+  que el cliente).
+- `pg_dump` usa variables sueltas (`PGHOST`/`PGPORT`/`PGDATABASE`/
+  `PGUSER`/`PGPASSWORD`/`PGSSLMODE=require`), no un connection string
+  único — si la contraseña tiene `$` u otro carácter especial, el
+  parseo de un URI se rompe.
+- `set -o pipefail` antes de `pg_dump | gzip` + un `ls -la` después como
+  chequeo visible en el log: sin esto, un `pg_dump` que falla a mitad de
+  camino puede quedar tapado por un `gzip` que "sale bien" con un
+  archivo casi vacío.
+- Dump acotado a `--schema=public --no-owner --no-privileges` — nada de
+  lo interno de Supabase (`auth`/`storage`/etc.).
+- El dump **nunca vive en este repo** (es público/con colaboradores) —
+  se clona `tizdigital-backups` (repo privado, centraliza backups de
+  varios proyectos del usuario) con un token, se guarda en
+  `tizdigital-backups/sinfila/db/YYYY-MM-DD.sql.gz`, se rota quedándose
+  solo con los últimos 7 días, y se commitea/pushea de vuelta.
+- Asumido `aleortizzz/tizdigital-backups` como dueño/repo (mismo dueño
+  que este repo) — si no es así, corregir `BACKUPS_REPO` en el workflow.
+
+Secrets a cargar en Settings → Secrets and variables → Actions del repo
+`sinfila` (ninguno se probó end-to-end por el asistente — requeriría
+pegar la contraseña real de la base y un token de escritura sobre un
+repo privado en el chat; se le dejó la decisión al usuario):
+`SUPA_HOST`, `SUPA_PORT`, `SUPA_USER`, `SUPA_PASSWORD` (Project Settings
+→ Database → Connection parameters de Supabase, NO el connection
+string), `BACKUP_TOKEN` (PAT de GitHub con permiso de escritura sobre
+`tizdigital-backups`).
+
 ## Bug real: `fecha()` de SuperAdmin mostraba un día antes (2026-09-16)
 
 Detectado por el usuario probando la herramienta de arriba: guardó
