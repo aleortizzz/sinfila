@@ -76,14 +76,33 @@ const preguntasFaltantes = computed(() => {
   return faltan
 })
 
-async function enviar() {
+const mostrarModalFaltantes = ref(false)
+
+// Botón "Enviar respuestas": si falta algo obligatorio, no bloquea el
+// envío — pregunta si de verdad quiere mandar así o prefiere seguir
+// completando (el cliente puede no tener a mano un dato puntual y no
+// queremos que eso le trabe todo el formulario).
+function intentarEnviar() {
   erroresVisibles.value = true
   if (preguntasFaltantes.value.length > 0) {
-    notificarError('Faltan completar algunas preguntas obligatorias (marcadas con *).')
-    const el = document.getElementById(`campo-${preguntasFaltantes.value[0]}`)
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    mostrarModalFaltantes.value = true
     return
   }
+  enviarAhora()
+}
+
+function seguirRespondiendo() {
+  mostrarModalFaltantes.value = false
+  const el = document.getElementById(`campo-${preguntasFaltantes.value[0]}`)
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function enviarDeTodasFormas() {
+  mostrarModalFaltantes.value = false
+  enviarAhora()
+}
+
+async function enviarAhora() {
   enviando.value = true
   try {
     const { error } = await supabase.from('jcbarandas_seo_respuestas').insert({ respuestas: { ...respuestas } })
@@ -127,7 +146,7 @@ async function enviar() {
       </div>
 
       <!-- Form -->
-      <form v-else @submit.prevent="enviar" class="mt-8 space-y-6">
+      <form v-else @submit.prevent="intentarEnviar" class="mt-8 space-y-6 pb-24">
         <section v-for="s in JCBARANDAS_SEO_FORM.sections" :key="s.id" class="rounded-2xl bg-white p-6 text-slate-900 shadow-xl sm:p-8">
           <h2 class="text-lg font-extrabold text-slate-900">{{ s.title }}</h2>
           <p class="mt-1.5 text-sm text-slate-500">{{ s.description }}</p>
@@ -203,7 +222,7 @@ async function enviar() {
           </div>
         </section>
 
-        <div class="flex flex-wrap justify-center gap-3 pb-4 pt-2">
+        <div class="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-3 border-t border-white/10 bg-[#020617]/95 px-4 py-3 backdrop-blur">
           <button type="button" @click="guardarProgreso" class="jcb-secondary">
             Guardar progreso
           </button>
@@ -212,6 +231,23 @@ async function enviar() {
           </button>
         </div>
       </form>
+    </div>
+
+    <!-- Modal: preguntas obligatorias sin responder -->
+    <div v-if="mostrarModalFaltantes" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+      <div class="w-full max-w-sm rounded-2xl bg-white p-6 text-center text-slate-900 shadow-2xl">
+        <h3 class="text-lg font-bold">
+          Te falta{{ preguntasFaltantes.length === 1 ? '' : 'n' }} responder
+          {{ preguntasFaltantes.length }} pregunta{{ preguntasFaltantes.length === 1 ? '' : 's' }}
+        </h3>
+        <p class="mt-2 text-sm text-slate-500">Podés mandarlo igual así como está, o volver a completarlas.</p>
+        <div class="mt-5 flex flex-col gap-2">
+          <button type="button" @click="seguirRespondiendo" class="jcb-submit w-full">Seguir respondiendo</button>
+          <button type="button" @click="enviarDeTodasFormas" class="jcb-secondary w-full text-slate-500! border-slate-300!">
+            Enviar de todas formas
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

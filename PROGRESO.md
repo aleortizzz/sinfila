@@ -196,6 +196,31 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Formulario JC Barandas: botones fijos + confirmar envío con faltantes (2026-09-18)
+
+Dos ajustes de UX pedidos después de ver el formulario armado:
+
+- **Botones fijos** ("Guardar progreso" / "Enviar respuestas"): pasaron
+  de estar al final del formulario a una barra fija abajo de toda la
+  pantalla, visible sin scrollear. El `<form>` ahora tiene `pb-24` para
+  que la barra fija no tape la última pregunta de la última sección.
+- **"Enviar respuestas" ya no bloquea el envío** si falta algo
+  obligatorio — antes tiraba un toast de error y no dejaba avanzar. Ahora
+  abre un modal ("Te faltan responder N preguntas") con dos opciones:
+  "Seguir respondiendo" (cierra el modal y scrollea a la primera
+  pregunta sin responder — es el botón destacado, para no incentivar
+  saltearse preguntas) o "Enviar de todas formas" (manda igual, aunque
+  falte todo). El cliente puede no tener a mano un dato puntual (ej. la
+  cantidad de reseñas de Google) y no tiene sentido que eso le trabe
+  todo el cuestionario.
+
+Probado con Playwright en desktop y mobile: los botones quedan
+visibles sin scrollear al cargar la página; enviar en blanco abre el
+modal con el conteo correcto (con singular/plural); "Seguir
+respondiendo" cierra el modal y scrollea a la pregunta faltante; "Enviar
+de todas formas" inserta igual en la base incluso con respuestas vacías
+(caso límite probado a propósito) — fila de prueba borrada después.
+
 ## Formulario JC Barandas: pregunta "envíos al interior" (2026-09-18)
 
 Se sumó `envios_interior` a la sección de zona geográfica, justo después
