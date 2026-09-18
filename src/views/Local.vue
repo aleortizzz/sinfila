@@ -250,7 +250,7 @@ async function salir() {
           <article
             v-for="p in pedidosFiltrados"
             :key="p.id"
-            :class="['rounded-2xl border-2 bg-white p-4 shadow-sm', colorEstado(p.estado)]"
+            :class="['rounded-2xl border-2 p-4 shadow-sm', colorEstado(p.estado)]"
           >
             <!-- ===== Vista Caja / mostrador ===== -->
             <template v-if="esCaja">
@@ -341,25 +341,35 @@ async function salir() {
 
             <!-- ===== Vista Barra / Cocina: solo lo necesario para preparar ===== -->
             <template v-else>
-              <div class="flex items-baseline justify-between">
+              <div class="flex items-center justify-between gap-2">
                 <span class="text-2xl font-extrabold text-slate-900">#{{ p.numero }}</span>
-                <span class="text-sm font-medium text-slate-500">{{ p.nombre_cliente }}</span>
+                <span
+                  v-if="p.nombre_cliente"
+                  class="max-w-[55%] truncate rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500"
+                >
+                  {{ p.nombre_cliente }}
+                </span>
               </div>
 
-              <ul class="mt-3 space-y-1 border-t border-slate-200/70 pt-3 text-base">
+              <ul class="mt-3 space-y-2 border-t border-slate-100 pt-3 text-base">
                 <li v-for="item in itemsVisibles(p)" :key="item.id">
-                  <span class="font-bold">{{ item.cantidad }}×</span> {{ item.nombre }}
-                  <span v-if="item.opciones_elegidas?.length" class="text-sm text-slate-500">
-                    ({{ item.opciones_elegidas.map((o) => (o.producto ? `${o.producto}: ${o.opcion}` : o.opcion)).join(', ') }})
-                  </span>
+                  <p class="font-semibold text-slate-900">
+                    <span class="text-slate-400">{{ item.cantidad }}×</span> {{ item.nombre }}
+                  </p>
+                  <p v-if="item.opciones_elegidas?.length" class="text-sm text-slate-500">
+                    {{ item.opciones_elegidas.map((o) => (o.producto ? `${o.producto}: ${o.opcion}` : o.opcion)).join(', ') }}
+                  </p>
                 </li>
               </ul>
 
               <button
                 type="button"
                 @click="marcarEstacionLista(p, vista)"
-                class="btn btn-dark mt-3 w-full py-2 text-sm"
+                class="btn btn-dark mt-4 flex w-full items-center justify-center gap-1.5 py-2.5 text-sm"
               >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 shrink-0">
+                  <path d="M4.5 12.75l6 6 9-13.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
                 Pedido listo
               </button>
             </template>

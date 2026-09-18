@@ -196,6 +196,34 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Tarjetas de Barra/Cocina en el KDS: rediseño + bug de color encontrado (2026-09-18)
+
+Pedido tras ver las tarjetas de la vista Barra/Cocina "bastante feas".
+Pauta del usuario: nada de emojis, pero un ícono bien puesto (SVG, no
+genérico) suma — sin abusar.
+
+- Encabezado de la tarjeta: antes el número y el nombre del cliente
+  quedaban en puntas opuestas sin relación visual; ahora el nombre es
+  una píldora con borde a la derecha del número, más compacta y clara.
+- Ítems: cantidad en gris apagado + nombre en negro más peso, con las
+  opciones elegidas en su propia línea en vez de entre paréntesis
+  pegadas al nombre — más fácil de leer de un vistazo rápido.
+- Botón "Pedido listo": se le sumó un ícono de check (mismo estilo SVG
+  `stroke=currentColor` que ya usan los íconos del nav) — refuerza la
+  acción sin ser un emoji.
+- **Bug real encontrado de paso**: la tarjeta combinaba `bg-white` (fijo)
+  con el color que devuelve `colorEstado()` (`bg-amber-50`/`bg-blue-50`/
+  etc.) — al ser dos utilities de background en conflicto, `bg-white`
+  le ganaba siempre en el CSS compilado y el tinte de color por estado
+  nunca se veía (solo quedaba el borde). Se sacó el `bg-white` fijo —
+  ahora el tinte pastel por estado se ve de verdad, en Caja también
+  (no solo Barra/Cocina, es la misma tarjeta base).
+- Probado con Playwright creando pedidos reales y pasándolos a
+  "en_preparación" vía API — capturas de Barra y Caja confirmando que
+  ambas vistas se ven bien y sin regresiones. De paso se encontraron y
+  borraron varios pedidos de prueba viejos (de sesiones anteriores)
+  que habían quedado sueltos en la base de "Bebidas Ortiz".
+
 ## Notificaciones: también en el panel admin, clickeables, y sin emojis (2026-09-18)
 
 Ajustes pedidos justo después de armar el toast de "nuevo pedido":
