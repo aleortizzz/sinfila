@@ -196,6 +196,47 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## Formulario de SEO para JC Barandas — feature aislado, sin relación con SinFila (2026-09-18)
+
+Pedido puntual: el usuario tiene un cliente externo (`jcbarandas.com.ar`,
+sitio institucional estático, sin base propia) al que le quiere pasar un
+link con un cuestionario de SEO para completar. En vez de armar
+infraestructura nueva para algo de un solo uso, aprovecha la base de
+Supabase que ya está andando acá — pero **totalmente aislado** del
+producto:
+
+- Migración `20260918100000_jcbarandas_seo_form.sql`: tabla
+  `jcbarandas_seo_respuestas` (`id`, `respuestas jsonb`, `creado_en`) sin
+  ninguna relación con `locales`/`negocios`/`usuario_local_roles`. RLS
+  con **una sola policy: INSERT para `anon`/`authenticated` con
+  `check (true)`** — sin policy de SELECT/UPDATE/DELETE a propósito, así
+  nadie puede leer las respuestas de otros vía la API pública (se
+  consultan directo desde el Table Editor de Supabase, con el rol
+  `postgres` que no pasa por RLS). Verificado con un `curl` anónimo
+  contra el REST endpoint: devuelve `[]`, no las filas reales.
+- `src/data/jcbarandasSeoForm.js`: el cuestionario completo (11
+  secciones, ~35 preguntas) como dato estático — nada de esto sale de
+  ningún panel ni se edita desde la UI.
+- `src/views/JCBarandasSeoForm.vue`: página standalone en
+  `/formulario-seo-jcbarandas`, ruta `bare` (sin el layout ni el fondo
+  del resto del sitio), sin auth, sin link a ningún lado — no aparece en
+  ningún nav ni pantalla de admin, se llega solo por URL directa.
+  Respuestas se guardan como un único objeto `{ pregunta_id: valor }` en
+  la columna `respuestas` (jsonb) — no se normalizó en columnas porque
+  es un formulario de un solo cliente, sin reutilización futura.
+- Estilo con la identidad visual real del sitio del cliente (scrapeado
+  jcbarandas.com.ar): fondo azul marino oscuro (`#020617`), acento azul
+  `#2563eb`, tipografía Figtree — para que el link se sienta parte de su
+  marca y no de SinFila.
+- **Probado de punta a punta** con Playwright: envío en blanco marca las
+  13 preguntas obligatorias sin dejar avanzar; completando los campos
+  mínimos, el insert llega bien a la tabla (verificado via SQL directo,
+  incluida la forma correcta del array de un `multi_select`); después de
+  eso se borró la fila de prueba. Fix de un bug real encontrado en el
+  camino: el botón "Enviar respuestas" tenía `position: sticky`, lo que
+  hacía que tapara el texto de la última pregunta visible al scrollear
+  — se sacó el sticky, queda como botón normal al final del formulario.
+
 ## Backup diario automático a `tizdigital-backups` (2026-09-18)
 
 Pedido explícito del usuario, con un patrón ya probado en otro proyecto

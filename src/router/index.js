@@ -9,6 +9,11 @@ const routes = [
   { path: '/registro', name: 'registro', component: () => import('../views/Registro.vue'), meta: { bare: true } },
   { path: '/recuperar', name: 'recuperar', component: () => import('../views/Recuperar.vue'), meta: { bare: true } },
   { path: '/nueva-contrasena', name: 'nueva-contrasena', component: () => import('../views/NuevaContrasena.vue'), meta: { bare: true } },
+
+  // Formulario de SEO para un cliente externo (jcbarandas.com.ar) — aparte
+  // del producto, no requiere auth, no aparece en ningún nav. Ver
+  // PROGRESO.md, 2026-09-18.
+  { path: '/formulario-seo-jcbarandas', name: 'jcbarandas-seo', component: () => import('../views/JCBarandasSeoForm.vue'), meta: { bare: true } },
   {
     path: '/superadmin',
     name: 'superadmin',
