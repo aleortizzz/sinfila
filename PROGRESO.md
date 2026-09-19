@@ -196,6 +196,38 @@ Producto de **TizDigital**, todavía sin nombre propio (define el subdominio).
   Salesforce/Stripe — tarjetas de stats arriba, tabla filtrable abajo). Falta
   definir el nombre de esta sección dentro del producto.
 
+## SuperAdmin: separar la lista de una pantalla de detalle por local (2026-09-18)
+
+Con "Editar fechas", "Ver historial" y "Deshabilitar carta" sumados hoy,
+la lista de SuperAdmin quedó con demasiados botones y paneles
+desplegables amontonados por tarjeta. Pedido: dejar en la tarjeta solo
+lo esencial, y mover el resto a una pantalla de detalle propia por local.
+
+- Ruta nueva `/superadmin/:slug` → `SuperAdminLocal.vue`.
+- `SuperAdmin.vue` (lista) quedó con: nombre, badges de estado,
+  negocio/contacto, links rápidos (Ver carta/Panel/KDS), resumen de
+  fechas, y un solo botón por tarjeta — "Activar (30 días)" si está
+  `pendiente_activacion` (la única acción realmente urgente en ese
+  estado), o "Gestionar" para el resto, que lleva al detalle. El botón
+  global "Forzar chequeo de vencimientos" se queda en la lista, porque
+  actúa sobre TODOS los locales a la vez, no sobre uno solo.
+- `SuperAdminLocal.vue` (detalle) tiene todo lo demás en secciones
+  separadas: Pago y suscripción (registrar pago / suspender), Carta
+  pública (habilitar/deshabilitar), Fechas de suscripción (testing), e
+  Historial de movimientos — ya no como panel desplegable, siempre
+  visible entero porque es una pantalla dedicada a un solo local.
+- `src/lib/superadmin.js` nuevo: `ESTADOS` (mapa de badges) y `fecha()`
+  (formateador sin el bug de huso horario) compartidos entre las dos
+  pantallas, en vez de duplicados.
+- Ambas rutas comparten el mismo guard (`requiresSuper`) del router —
+  probado con la cuenta de prueba (no super-admin): entrar directo a
+  `/superadmin/bar-de-prueba` rebota exactamente igual que entrar a
+  `/superadmin` (vía Home.vue, de vuelta a su propio panel). `npm run
+  build` corrido sin errores. No se pudo probar el render real con una
+  cuenta super-admin de verdad (crear una de prueba requiere una
+  escalada de privilegio que el sistema bloquea) — si algo se ve raro
+  al entrar de verdad, avisar.
+
 ## SuperAdmin: historial de movimientos por local (2026-09-18)
 
 Pedido: un botón en SuperAdmin que muestre fechas, pagos (con el % de

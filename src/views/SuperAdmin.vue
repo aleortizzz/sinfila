@@ -1,19 +1,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import {
-  listarLocalesSuperadmin,
-  activarLocal,
-  registrarPago,
-  suspenderLocal,
-  fijarFechasLocal,
-  forzarChequeoVencimientos,
-  alternarCartaLocal,
-  obtenerHistorialLocal,
-  cerrarSesion,
-} from '../lib/auth'
+import { listarLocalesSuperadmin, activarLocal, forzarChequeoVencimientos, cerrarSesion } from '../lib/auth'
 import { pesos } from '../lib/formato'
 import { notificarExito, notificarError } from '../lib/toast'
+import { ESTADOS, fecha } from '../lib/superadmin'
 
 const router = useRouter()
 
@@ -22,55 +13,10 @@ const error = ref(null)
 const locales = ref([])
 const accionando = ref(null) // local_id en curso
 
-// Inputs por local: { [local_id]: { precio, monto, fechas: {...} } }
-const inputs = reactive({})
-const fechasAbiertas = ref(new Set())
-function toggleFechas(localId) {
-  if (fechasAbiertas.value.has(localId)) fechasAbiertas.value.delete(localId)
-  else fechasAbiertas.value.add(localId)
-}
-
-// Los date de la base vienen como "2026-10-15" (o con hora si acompaña
-// timestamp) — el <input type="date"> solo entiende "YYYY-MM-DD".
-const soloFecha = (d) => (d ? String(d).slice(0, 10) : '')
-
-const ESTADOS = {
-  pendiente_activacion: { txt: 'Pendiente', cls: 'bg-amber-100 text-amber-700' },
-  trial: { txt: 'Prueba', cls: 'bg-blue-100 text-blue-700' },
-  activo: { txt: 'Activo', cls: 'bg-green-100 text-green-700' },
-  gracia: { txt: 'En gracia', cls: 'bg-orange-100 text-orange-700' },
-  suspendido: { txt: 'Suspendido', cls: 'bg-red-100 text-red-700' },
-}
-
-// Historial de movimientos: se carga bajo demanda la primera vez que se
-// abre (no de una con la lista de locales, para no pedir N historiales
-// completos si nadie los va a mirar).
-const historialAbierto = ref(new Set())
-const historiales = reactive({}) // local_id -> array | 'cargando' | error string
-const TIPO_EVENTO = {
-  pago: { txt: 'Pago', cls: 'bg-green-100 text-green-700' },
-  activacion: { txt: 'Activación', cls: 'bg-blue-100 text-blue-700' },
-  gracia: { txt: 'Entró en gracia', cls: 'bg-orange-100 text-orange-700' },
-  suspension: { txt: 'Suspendido', cls: 'bg-red-100 text-red-700' },
-  carta_deshabilitada: { txt: 'Carta deshabilitada', cls: 'bg-slate-200 text-slate-700' },
-  carta_habilitada: { txt: 'Carta habilitada', cls: 'bg-slate-100 text-slate-600' },
-}
-async function toggleHistorial(l) {
-  if (historialAbierto.value.has(l.local_id)) {
-    historialAbierto.value.delete(l.local_id)
-    return
-  }
-  historialAbierto.value.add(l.local_id)
-  if (historiales[l.local_id]) return // ya lo cargamos antes
-  historiales[l.local_id] = 'cargando'
-  try {
-    historiales[l.local_id] = await obtenerHistorialLocal(l.local_id)
-  } catch (e) {
-    historiales[l.local_id] = e.message
-  }
-}
-const fechaHora = (d) =>
-  new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+// Solo hace falta guardar el precio acá (para activar) — todo lo demás
+// (pago, fechas, historial, carta) se maneja en la pantalla de detalle
+// de cada local.
+const precios = reactive({})
 
 async function cargar() {
   cargando.value = true
@@ -78,15 +24,7 @@ async function cargar() {
   try {
     locales.value = await listarLocalesSuperadmin()
     locales.value.forEach((l) => {
-      inputs[l.local_id] = {
-        precio: inputs[l.local_id]?.precio ?? (l.precio_mensual || ''),
-        monto: inputs[l.local_id]?.monto ?? (l.precio_mensual || ''),
-        fechas: {
-          trial_hasta: soloFecha(l.trial_hasta),
-          proximo_vencimiento: soloFecha(l.proximo_vencimiento),
-          gracia_hasta: soloFecha(l.gracia_hasta),
-        },
-      }
+      precios[l.local_id] = precios[l.local_id] ?? (l.precio_mensual || '')
     })
   } catch (e) {
     error.value = e.message
@@ -97,93 +35,13 @@ async function cargar() {
 onMounted(cargar)
 
 async function activar(l) {
-  const precio = inputs[l.local_id]?.precio
+  const precio = precios[l.local_id]
   if (!(Number(precio) > 0)) return alert('Cargá el precio mensual.')
   accionando.value = l.local_id
   try {
     await activarLocal(l.local_id, precio)
     await cargar()
     notificarExito(`"${l.local_nombre}" activado — 30 días de prueba.`)
-  } catch (e) {
-    notificarError(e.message)
-  } finally {
-    accionando.value = null
-  }
-}
-
-async function pago(l) {
-  const monto = inputs[l.local_id]?.monto
-  if (!(Number(monto) > 0)) return alert('Cargá el monto del pago.')
-  if (!confirm(`¿Registrar un pago de ${pesos(monto)} para "${l.local_nombre}"?`)) return
-  accionando.value = l.local_id
-  try {
-    await registrarPago(l.local_id, monto)
-    await cargar()
-    notificarExito('Pago registrado.')
-  } catch (e) {
-    notificarError(e.message)
-  } finally {
-    accionando.value = null
-  }
-}
-
-async function suspender(l) {
-  if (
-    !confirm(
-      `¿Suspender "${l.local_nombre}"? Deja de poder recibir pedidos y el dueño no puede operar el panel — pero la carta se sigue viendo, marcada como cerrada.`,
-    )
-  )
-    return
-  accionando.value = l.local_id
-  try {
-    await suspenderLocal(l.local_id)
-    await cargar()
-    notificarExito(`"${l.local_nombre}" suspendido.`)
-  } catch (e) {
-    notificarError(e.message)
-  } finally {
-    accionando.value = null
-  }
-}
-
-async function alternarCarta(l) {
-  const activar = l.carta_deshabilitada
-  if (
-    !activar &&
-    !confirm(`¿Deshabilitar la carta de "${l.local_nombre}"? Deja de verse del todo (como si el local no existiera), sin importar el estado de la suscripción.`)
-  ) {
-    return
-  }
-  accionando.value = l.local_id
-  try {
-    await alternarCartaLocal(l.local_id, !activar)
-    await cargar()
-    notificarExito(activar ? `Carta de "${l.local_nombre}" habilitada.` : `Carta de "${l.local_nombre}" deshabilitada.`)
-  } catch (e) {
-    notificarError(e.message)
-  } finally {
-    accionando.value = null
-  }
-}
-
-// El <input type="date"> solo tiene valor cuando completaste día, mes Y
-// año — si dejás una fecha a medio escribir, v-model queda en '' sin
-// avisar nada. Por eso acá se repiten las 3 fechas tal cual quedaron
-// (con "—" si están vacías) en vez de un genérico "Guardado" — así se ve
-// al toque si una quedó vacía sin querer.
-async function guardarFechas(l) {
-  const f = inputs[l.local_id].fechas
-  accionando.value = l.local_id
-  try {
-    await fijarFechasLocal(l.local_id, {
-      trialHasta: f.trial_hasta,
-      proximoVencimiento: f.proximo_vencimiento,
-      graciaHasta: f.gracia_hasta,
-    })
-    await cargar()
-    notificarExito(
-      `Guardado — Prueba: ${fecha(f.trial_hasta)} · Vence: ${fecha(f.proximo_vencimiento)} · Gracia: ${fecha(f.gracia_hasta)}`,
-    )
   } catch (e) {
     notificarError(e.message)
   } finally {
@@ -209,11 +67,6 @@ async function salir() {
   await cerrarSesion()
   router.push('/login')
 }
-
-// `new Date("2026-09-15")` sin hora se interpreta como UTC medianoche —
-// en un huso horario detrás de UTC (como Argentina) eso muestra el día
-// anterior. Forzando una hora local (T00:00:00) se evita el corrimiento.
-const fecha = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString('es-AR') : '—')
 </script>
 
 <template>
@@ -244,138 +97,49 @@ const fecha = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocal
         </p>
 
         <ul class="mt-4 space-y-3">
-          <li v-for="l in locales" :key="l.local_id" class="card p-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <p class="font-bold text-slate-900">{{ l.local_nombre }}</p>
-                  <span :class="['rounded-full px-2 py-0.5 text-[11px] font-semibold', ESTADOS[l.estado]?.cls]">
-                    {{ ESTADOS[l.estado]?.txt ?? l.estado }}
-                  </span>
-                  <span v-if="l.carta_deshabilitada" class="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-white">
-                    Carta deshabilitada
-                  </span>
-                </div>
-                <p class="text-xs text-slate-500">{{ l.negocio_nombre }} · {{ l.email_contacto }}</p>
-                <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
-                  <RouterLink :to="`/${l.slug}`" target="_blank" class="text-slate-500 underline hover:text-slate-900">
-                    Ver carta ↗
-                  </RouterLink>
-                  <RouterLink :to="`/panel/${l.slug}/admin`" class="t-brand hover:underline">Panel</RouterLink>
-                  <RouterLink :to="`/panel/${l.slug}`" class="t-brand hover:underline">KDS</RouterLink>
-                </p>
-                <p class="mt-1 text-xs text-slate-400">
-                  <span v-if="l.trial_hasta">Prueba hasta {{ fecha(l.trial_hasta) }} · </span>
-                  <span v-if="l.proximo_vencimiento">Vence {{ fecha(l.proximo_vencimiento) }} · </span>
-                  <span v-if="l.gracia_hasta">Gracia hasta {{ fecha(l.gracia_hasta) }} · </span>
-                  Mensual {{ pesos(l.precio_mensual) }}
-                </p>
+          <li v-for="l in locales" :key="l.local_id" class="card flex flex-wrap items-start justify-between gap-3 p-4">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="font-bold text-slate-900">{{ l.local_nombre }}</p>
+                <span :class="['rounded-full px-2 py-0.5 text-[11px] font-semibold', ESTADOS[l.estado]?.cls]">
+                  {{ ESTADOS[l.estado]?.txt ?? l.estado }}
+                </span>
+                <span v-if="l.carta_deshabilitada" class="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-white">
+                  Carta deshabilitada
+                </span>
               </div>
-
-              <div class="flex shrink-0 flex-wrap items-center gap-2">
-                <template v-if="l.estado === 'pendiente_activacion'">
-                  <input
-                    v-model="inputs[l.local_id].precio"
-                    type="number"
-                    min="0"
-                    placeholder="Precio mensual"
-                    class="input w-36"
-                  />
-                  <button type="button" :disabled="accionando === l.local_id" @click="activar(l)" class="btn btn-dark px-3 py-2 text-xs">
-                    Activar (30 días)
-                  </button>
-                </template>
-                <template v-else>
-                  <input
-                    v-model="inputs[l.local_id].monto"
-                    type="number"
-                    min="0"
-                    placeholder="Monto"
-                    class="input w-32"
-                  />
-                  <button type="button" :disabled="accionando === l.local_id" @click="pago(l)" class="btn btn-dark px-3 py-2 text-xs">
-                    {{ l.estado === 'suspendido' ? 'Registrar pago y reactivar' : 'Registrar pago' }}
-                  </button>
-                  <button
-                    v-if="l.estado !== 'suspendido'"
-                    type="button"
-                    :disabled="accionando === l.local_id"
-                    @click="suspender(l)"
-                    class="btn border border-red-300 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
-                  >
-                    Suspender
-                  </button>
-                </template>
-                <button
-                  type="button"
-                  :disabled="accionando === l.local_id"
-                  @click="alternarCarta(l)"
-                  class="btn border border-slate-300 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"
-                >
-                  {{ l.carta_deshabilitada ? 'Habilitar carta' : 'Deshabilitar carta' }}
-                </button>
-                <button type="button" @click="toggleFechas(l.local_id)" class="btn btn-ghost px-3 py-2 text-xs">
-                  {{ fechasAbiertas.has(l.local_id) ? 'Cerrar fechas' : 'Editar fechas' }}
-                </button>
-                <button type="button" @click="toggleHistorial(l)" class="btn btn-ghost px-3 py-2 text-xs">
-                  {{ historialAbierto.has(l.local_id) ? 'Cerrar historial' : 'Ver historial de movimientos' }}
-                </button>
-              </div>
+              <p class="text-xs text-slate-500">{{ l.negocio_nombre }} · {{ l.email_contacto }}</p>
+              <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+                <RouterLink :to="`/${l.slug}`" target="_blank" class="text-slate-500 underline hover:text-slate-900">
+                  Ver carta ↗
+                </RouterLink>
+                <RouterLink :to="`/panel/${l.slug}/admin`" class="t-brand hover:underline">Panel</RouterLink>
+                <RouterLink :to="`/panel/${l.slug}`" class="t-brand hover:underline">KDS</RouterLink>
+              </p>
+              <p class="mt-1 text-xs text-slate-400">
+                <span v-if="l.trial_hasta">Prueba hasta {{ fecha(l.trial_hasta) }} · </span>
+                <span v-if="l.proximo_vencimiento">Vence {{ fecha(l.proximo_vencimiento) }} · </span>
+                <span v-if="l.gracia_hasta">Gracia hasta {{ fecha(l.gracia_hasta) }} · </span>
+                Mensual {{ pesos(l.precio_mensual) }}
+              </p>
             </div>
 
-            <div v-if="historialAbierto.has(l.local_id)" class="mt-3 border-t border-slate-100 pt-3">
-              <p v-if="historiales[l.local_id] === 'cargando'" class="text-xs text-slate-400">Cargando…</p>
-              <p v-else-if="typeof historiales[l.local_id] === 'string'" class="text-xs text-red-600">{{ historiales[l.local_id] }}</p>
-              <p v-else-if="historiales[l.local_id]?.length === 0" class="text-xs text-slate-400">
-                Sin movimientos todavía.
-              </p>
-              <ul v-else class="space-y-2">
-                <li
-                  v-for="(ev, i) in historiales[l.local_id]" :key="i"
-                  class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"
-                >
-                  <div class="min-w-0">
-                    <span :class="['rounded-full px-2 py-0.5 font-semibold', TIPO_EVENTO[ev.tipo]?.cls]">
-                      {{ TIPO_EVENTO[ev.tipo]?.txt ?? ev.tipo }}
-                    </span>
-                    <p class="mt-1 text-slate-600">{{ ev.detalle }}</p>
-                  </div>
-                  <div class="shrink-0 text-right">
-                    <p class="text-slate-400">{{ fechaHora(ev.fecha) }}</p>
-                    <p v-if="ev.monto" class="font-semibold text-slate-900">{{ pesos(ev.monto) }}</p>
-                    <p v-if="ev.variacion_pct" class="font-semibold text-emerald-600">+{{ ev.variacion_pct }}% vs. el pago anterior</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            <div v-if="fechasAbiertas.has(l.local_id)" class="mt-3 border-t border-slate-100 pt-3">
-              <p class="text-xs text-slate-400">
-                Para testing: mueve las fechas de suscripción a mano (sin esperar un mes real) y
-                usá "Forzar chequeo de vencimientos" arriba para ver el efecto al toque.
-              </p>
-              <div class="mt-2 flex flex-wrap items-end gap-3">
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-slate-600">Prueba hasta</label>
-                  <input v-model="inputs[l.local_id].fechas.trial_hasta" type="date" class="input py-1.5 text-sm" />
-                </div>
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-slate-600">Vence</label>
-                  <input v-model="inputs[l.local_id].fechas.proximo_vencimiento" type="date" class="input py-1.5 text-sm" />
-                </div>
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-slate-600">Gracia hasta</label>
-                  <input v-model="inputs[l.local_id].fechas.gracia_hasta" type="date" class="input py-1.5 text-sm" />
-                </div>
-                <button
-                  type="button"
-                  :disabled="accionando === l.local_id"
-                  @click="guardarFechas(l)"
-                  class="btn btn-dark px-3 py-2 text-xs"
-                >
-                  Guardar fechas
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
+              <template v-if="l.estado === 'pendiente_activacion'">
+                <input
+                  v-model="precios[l.local_id]"
+                  type="number"
+                  min="0"
+                  placeholder="Precio mensual"
+                  class="input w-36"
+                />
+                <button type="button" :disabled="accionando === l.local_id" @click="activar(l)" class="btn btn-dark px-3 py-2 text-xs">
+                  Activar (30 días)
                 </button>
-              </div>
+              </template>
+              <RouterLink v-else :to="`/superadmin/${l.slug}`" class="btn btn-dark px-3 py-2 text-xs">
+                Gestionar
+              </RouterLink>
             </div>
           </li>
           <li v-if="locales.length === 0" class="text-slate-500">Todavía no hay locales.</li>

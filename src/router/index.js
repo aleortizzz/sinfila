@@ -20,6 +20,12 @@ const routes = [
     component: () => import('../views/SuperAdmin.vue'),
     meta: { bare: true, requiresAuth: true, requiresSuper: true },
   },
+  {
+    path: '/superadmin/:slug',
+    name: 'superadmin-local',
+    component: () => import('../views/SuperAdminLocal.vue'),
+    meta: { bare: true, requiresAuth: true, requiresSuper: true },
+  },
 
   // Carta pública de un local: sinfila.tizdigital.com/<slug>
   { path: '/:slug', name: 'carta', component: () => import('../views/Carta.vue') },
